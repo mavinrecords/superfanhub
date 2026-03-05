@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="description" content="Mavin SuperFan Hub - Join the ultimate fan community for Mavin Records artists">
+  <title>SuperFan Hub | Mavin Records</title>
+  <link rel="icon" type="image/png" href="/images/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="stylesheet" href="/css/home.css">
+</head>
+
+<body>
+  <!-- Navigation -->
+  <nav class="nav" id="nav">
+    <div class="nav-logo">
+      MAVIN
+      <span>SuperFan Hub</span>
+    </div>
+
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#artists">Artists</a></li>
+      <li><a href="/redeem">Gift Cards</a></li>
+    </ul>
+
+    <div class="nav-cta">
+      <a href="/login" class="btn btn-outline">Sign In</a>
+      <a href="/register" class="btn btn-gold">Join Now</a>
+    </div>
+
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+  </nav>
+
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-menu" id="mobileMenu">
+    <button class="mobile-menu-close" onclick="closeMobileMenu()">✕</button>
+    <a href="#features" onclick="closeMobileMenu()">Features</a>
+    <a href="#artists" onclick="closeMobileMenu()">Artists</a>
+    <a href="/redeem" onclick="closeMobileMenu()">Gift Cards</a>
+    <a href="/login" class="btn btn-outline" onclick="closeMobileMenu()">Sign In</a>
+    <a href="/register" class="btn btn-gold" onclick="closeMobileMenu()">Join Now</a>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-content">
+      <div class="hero-label">Mavin Records Fan Community</div>
+      <h1 class="hero-title">
+        Stream.<br>
+        Earn.<br>
+        <span class="gold">Unlock.</span>
+      </h1>
+      <p class="hero-subtitle">
+        Connect your Spotify, earn points for streaming your favorite Mavin artists,
+        and unlock exclusive rewards as a verified SuperFan.
+      </p>
+      <div class="hero-actions">
+        <a href="/register" class="btn btn-gold">Join the Inner Circle</a>
+        <a href="#features" class="btn btn-outline">How It Works</a>
+      </div>
+    </div>
+
+    <div class="floating-artists">
+      <div class="artist-tag">Rema</div>
+      <div class="artist-tag">Ayra Starr</div>
+      <div class="artist-tag">Crayon</div>
+      <div class="artist-tag">Johnny Drille</div>
+      <div class="artist-tag">LADIPOE</div>
+      <div class="artist-tag">Magixx</div>
+      <div class="artist-tag">Bayanni</div>
+      <div class="artist-tag">Boy Spyce</div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section class="features" id="features">
+    <div class="section-header">
+      <div class="section-label">How It Works</div>
+      <h2 class="section-title">Earn Points, Unlock Rewards</h2>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+            <path
+              d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z">
+            </path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Connect Spotify</h3>
+        <p class="feature-desc">
+          Link your Spotify account and we'll automatically track your streams
+          of Mavin artists like Rema, Ayra Starr, and more.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon
+              points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+            </polygon>
+          </svg>
+        </div>
+        <h3 class="feature-title">Earn Points</h3>
+        <p class="feature-desc">
+          Every minute you stream earns you points. New releases, full albums,
+          and streaks give you bonus multipliers.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+            <line x1="1" y1="10" x2="23" y2="10"></line>
+          </svg>
+        </div>
+        <h3 class="feature-title">Loyalty Card</h3>
+        <p class="feature-desc">
+          Get your unique Mavin SuperFan card. Level up through Bronze, Silver,
+          Gold, Platinum, and Diamond tiers.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 1a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+            <path d="M19 10v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-2"></path>
+            <line x1="12" y1="22" x2="12" y2="7"></line>
+            <path d="M5 10a7 7 0 0 1 14 0"></path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Exclusive Access</h3>
+        <p class="feature-desc">
+          Early access to new music, meet & greets, listening parties,
+          and VIP experiences for top-tier fans.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <h3 class="feature-title">Referrals</h3>
+        <p class="feature-desc">
+          Invite friends and earn bonus points when they join. Build your
+          crew and climb the leaderboard together.
+        </p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+        </div>
+        <h3 class="feature-title">Gift Cards</h3>
+        <p class="feature-desc">
+          Use Mavin Gift Cards as a secondary way to store value or gift
+          access to friends. Link them to your wallet.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Artists Marquee -->
+  <section class="artists" id="artists">
+    <div class="artists-marquee">
+      <span class="artist-name">Rema</span>
+      <span class="artist-name">Ayra Starr</span>
+      <span class="artist-name">Crayon</span>
+      <span class="artist-name">Johnny Drille</span>
+      <span class="artist-name">LADIPOE</span>
+      <span class="artist-name">Magixx</span>
+      <span class="artist-name">Bayanni</span>
+      <span class="artist-name">Boy Spyce</span>
+      <span class="artist-name">Rema</span>
+      <span class="artist-name">Ayra Starr</span>
+      <span class="artist-name">Crayon</span>
+      <span class="artist-name">Johnny Drille</span>
+      <span class="artist-name">LADIPOE</span>
+      <span class="artist-name">Magixx</span>
+      <span class="artist-name">Bayanni</span>
+      <span class="artist-name">Boy Spyce</span>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta">
+    <div class="cta-content">
+      <div class="section-label">Join the Movement</div>
+      <h2 class="cta-title">Become a Mavin SuperFan Today</h2>
+      <p class="cta-subtitle">
+        Create your free account, apply for your loyalty card, and start
+        earning rewards for doing what you love — streaming great music.
+      </p>
+      <a href="/register" class="btn btn-gold">Create Free Account</a>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-logo">MAVIN</div>
+      <ul class="footer-links">
+        <li><a href="https://mavinrecords.com">Mavin Records</a></li>
+        <li><a href="https://mavinrecords.com/artists">Artists</a></li>
+        <li><a href="/admin">Admin</a></li>
+        <li><a href="#">Privacy</a></li>
+        <li><a href="#">Terms</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 Mavin Global Holdings</div>
+    </div>
+  </footer>
+
+  <!-- Gift Card Quick Access -->
+  <div class="gift-access">
+    <a href="/redeem" class="gift-btn">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        style="margin-right:8px">
+        <rect x="3" y="8" width="18" height="4" rx="1" ry="1"></rect>
+        <path d="M12 8v13"></path>
+        <path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"></path>
+        <path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"></path>
+      </svg> Redeem Card
+    </a>
+  </div>
+
+  <script>
+    // Nav scroll effect
+    window.addEventListener('scroll', () => {
+      const nav = document.getElementById('nav');
+      if (window.scrollY > 50) {
+        nav.classList.add('scrolled');
+      } else {
+        nav.classList.remove('scrolled');
+      }
+    });
+
+    // Check if logged in
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        // Redirect to dashboard if already logged in
+        // window.location.href = '/dashboard';
+      }
+    });
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  </script>
+</body>
+
+</html>

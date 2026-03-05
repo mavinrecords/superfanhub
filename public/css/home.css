@@ -1,0 +1,505 @@
+/* Homepage Specific Styles */
+
+:root {
+    --mavin-gold: #A2812E;
+    --mavin-gold-light: #c4a03a;
+    --bg-black: #000000;
+    --bg-dark: #0a0a0a;
+    --text-white: #ffffff;
+    --text-gray: #888888;
+    --font-main: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+/* Navigation - Mavin Style */
+.nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 24px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: transparent;
+    transition: background 0.3s ease;
+}
+
+.nav.scrolled {
+    background: rgba(0, 0, 0, 0.95);
+    backdrop-filter: blur(10px);
+}
+
+.nav-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--mavin-gold);
+}
+
+.nav-logo span {
+    font-weight: 400;
+    color: var(--text-white);
+    font-size: 0.875rem;
+    display: block;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+}
+
+.nav-links {
+    display: flex;
+    gap: 48px;
+    list-style: none;
+}
+
+.nav-links a {
+    color: var(--text-white);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: color 0.2s ease;
+}
+
+.nav-links a:hover {
+    color: var(--mavin-gold);
+}
+
+.nav-cta {
+    display: flex;
+    gap: 16px;
+}
+
+.btn {
+    padding: 12px 28px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
+    border-radius: 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--text-white);
+    color: var(--text-white);
+}
+
+.btn-outline:hover {
+    background: var(--text-white);
+    color: var(--bg-black);
+}
+
+.btn-gold {
+    background: var(--mavin-gold);
+    border: 1px solid var(--mavin-gold);
+    color: var(--bg-black);
+}
+
+.btn-gold:hover {
+    background: var(--mavin-gold-light);
+    border-color: var(--mavin-gold-light);
+}
+
+/* Hero Section */
+.hero {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 120px 48px 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background:
+        radial-gradient(ellipse at 20% 80%, rgba(162, 129, 46, 0.15) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 20%, rgba(162, 129, 46, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.hero-content {
+    max-width: 800px;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mavin-gold);
+    margin-bottom: 24px;
+}
+
+.hero-title {
+    font-size: clamp(3rem, 8vw, 6rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 32px;
+}
+
+.hero-title .gold {
+    color: var(--mavin-gold);
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--text-gray);
+    line-height: 1.6;
+    max-width: 500px;
+    margin-bottom: 48px;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Floating Artists */
+.floating-artists {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-right: 48px;
+    opacity: 0.6;
+}
+
+.artist-tag {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-gray);
+    text-align: right;
+    transition: all 0.2s ease;
+}
+
+.artist-tag:hover {
+    color: var(--mavin-gold);
+    transform: translateX(-4px);
+}
+
+/* Features Section */
+.features {
+    padding: 120px 48px;
+    background: var(--bg-dark);
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 80px;
+}
+
+.section-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--mavin-gold);
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.feature-card {
+    padding: 40px;
+    background: var(--bg-black);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    border-color: var(--mavin-gold);
+    transform: translateY(-4px);
+}
+
+.feature-icon {
+    font-size: 2rem;
+    margin-bottom: 24px;
+}
+
+.feature-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.feature-desc {
+    font-size: 0.9375rem;
+    color: var(--text-gray);
+    line-height: 1.6;
+}
+
+/* Artists Section */
+.artists {
+    padding: 120px 48px;
+    background: var(--bg-black);
+}
+
+.artists-marquee {
+    display: flex;
+    gap: 48px;
+    animation: marquee 30s linear infinite;
+    white-space: nowrap;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+.artist-name {
+    font-size: 4rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.1);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    transition: color 0.3s ease;
+}
+
+.artist-name:hover {
+    color: var(--mavin-gold);
+}
+
+/* CTA Section */
+.cta {
+    padding: 120px 48px;
+    background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-black) 100%);
+    text-align: center;
+}
+
+.cta-content {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.cta-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+    letter-spacing: -0.02em;
+}
+
+.cta-subtitle {
+    font-size: 1.125rem;
+    color: var(--text-gray);
+    margin-bottom: 40px;
+}
+
+/* Footer */
+.footer {
+    padding: 48px;
+    background: var(--bg-black);
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-logo {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--mavin-gold);
+}
+
+.footer-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+}
+
+.footer-links a {
+    color: var(--text-gray);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    transition: color 0.2s ease;
+}
+
+.footer-links a:hover {
+    color: var(--text-white);
+}
+
+.footer-copy {
+    font-size: 0.75rem;
+    color: var(--text-gray);
+}
+
+/* Mobile Menu */
+.mobile-menu-btn {
+    display: none;
+    background: none;
+    border: none;
+    color: var(--text-white);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* Responsive */
+@media (max-width: 968px) {
+    .nav {
+        padding: 20px 24px;
+    }
+
+    .nav-links {
+        display: none;
+    }
+
+    .mobile-menu-btn {
+        display: block;
+    }
+
+    .hero {
+        padding: 100px 24px 60px;
+    }
+
+    .hero-title {
+        font-size: clamp(2.5rem, 10vw, 4rem);
+    }
+
+    .floating-artists {
+        display: none;
+    }
+
+    .features,
+    .artists,
+    .cta {
+        padding: 80px 24px;
+    }
+
+    .footer-content {
+        flex-direction: column;
+        gap: 24px;
+        text-align: center;
+    }
+
+    .footer-links {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Mobile menu overlay */
+    .mobile-menu {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-black);
+        z-index: 1001;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .mobile-menu.open {
+        display: flex;
+        opacity: 1;
+    }
+
+    .mobile-menu-close {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: none;
+        border: none;
+        color: var(--text-white);
+        font-size: 2rem;
+        cursor: pointer;
+    }
+
+    .mobile-menu a {
+        color: var(--text-white);
+        text-decoration: none;
+        font-size: 1.5rem;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+        transition: color 0.2s ease;
+    }
+
+    .mobile-menu a:hover {
+        color: var(--mavin-gold);
+    }
+
+    .mobile-menu .btn {
+        margin-top: 24px;
+        padding: 14px 32px;
+    }
+}
+
+/* Gift Card Quick Access */
+.gift-access {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+}
+
+.gift-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px;
+    background: var(--mavin-gold);
+    color: var(--bg-black);
+    text-decoration: none;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.2s ease;
+}
+
+.gift-btn:hover {
+    background: var(--mavin-gold-light);
+    transform: translateY(-2px);
+}

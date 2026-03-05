@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Gift Card Administration Dashboard">
+    <title>Admin Dashboard - Gift Card System</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        .admin-layout {
+            display: flex;
+            min-height: 100vh;
+            background: #000000;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 240px;
+            background: #0a0a0a;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            padding: var(--space-lg);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            transition: width 0.2s ease;
+            z-index: 100;
+        }
+
+        .sidebar.collapsed {
+            width: 72px;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-xl);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .sidebar-logo {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: #A2812E;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .sidebar.collapsed .sidebar-logo {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar-toggle {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: var(--space-sm);
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .sidebar-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+        }
+
+        /* Navigation */
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            color: var(--text-secondary);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: var(--space-xs);
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: rgba(162, 129, 46, 0.15);
+            color: #A2812E;
+        }
+
+        .nav-icon {
+            flex-shrink: 0;
+        }
+
+        .sidebar.collapsed .nav-label {
+            display: none;
+        }
+
+        .sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding: var(--space-md);
+        }
+
+        /* User Info at bottom */
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: var(--radius-md);
+            margin-top: auto;
+        }
+
+        .sidebar.collapsed .user-info {
+            flex-direction: column;
+            padding: var(--space-sm);
+        }
+
+        .sidebar.collapsed .user-info>div:not(.user-avatar) {
+            display: none;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #A2812E;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: #000;
+            flex-shrink: 0;
+        }
+
+        /* Main Content Area */
+        .main-content {
+            flex: 1;
+            margin-left: 240px;
+            transition: margin-left 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar.collapsed~.main-content {
+            margin-left: 72px;
+        }
+
+        /* Header Bar */
+        .header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: var(--space-md) var(--space-xl);
+            background: #0a0a0a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .header-bar .btn {
+            font-size: 0.875rem;
+        }
+
+        .content-area {
+            padding: var(--space-2xl);
+            flex: 1;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--space-2xl);
+        }
+
+        .page-header h1 {
+            font-weight: 700;
+            text-transform: lowercase;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+            margin-bottom: var(--space-xl);
+        }
+
+        .filter-bar select,
+        .filter-bar input {
+            padding: var(--space-sm) var(--space-md);
+            background: #111111;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius-sm);
+            color: var(--text-primary);
+            font-size: 0.875rem;
+        }
+
+        .card-code-new {
+            font-family: var(--font-mono);
+            font-size: 1.25rem;
+            background: #111111;
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            text-align: center;
+            letter-spacing: 0.1em;
+            margin: var(--space-lg) 0;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .copy-button {
+            position: absolute;
+            right: var(--space-md);
+            top: 50%;
+            transform: translateY(-50%);
+            background: #A2812E;
+            color: #000;
+            border: none;
+            padding: var(--space-sm) var(--space-md);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .bulk-cards-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin: var(--space-lg) 0;
+        }
+
+        .bulk-card-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: var(--space-sm) var(--space-md);
+            background: #111111;
+            border-radius: var(--radius-sm);
+            margin-bottom: var(--space-sm);
+            font-family: var(--font-mono);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 72px;
+            }
+
+            .sidebar .sidebar-logo,
+            .sidebar .nav-label,
+            .sidebar .user-info>div:not(.user-avatar) {
+                display: none;
+            }
+
+            .sidebar .nav-item {
+                justify-content: center;
+            }
+
+            .main-content {
+                margin-left: 72px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen -->
+    <div id="loginScreen" class="hero" style="min-height:100vh;display:flex;align-items:center;justify-content:center;">
+        <div class="card" style="width:100%;max-width:400px;">
+            <h2 class="text-center mb-xl">Admin Login</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label class="form-label" for="username">Username</label>
+                    <input type="text" id="username" class="form-input" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" id="password" class="form-input" required autocomplete="current-password">
+                </div>
+                <div id="loginError" class="alert alert-error hidden mb-lg"></div>
+                <button type="submit" class="btn btn-primary w-full" id="loginBtn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="admin-layout hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">Admin Panel</div>
+                <button class="sidebar-toggle" id="sidebarToggle" title="Toggle sidebar">
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                        <path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" stroke-width="1.5"
+                            stroke-linecap="round" />
+                    </svg>
+                </button>
+            </div>
+
+            <nav>
+                <div class="nav-item active" data-page="dashboard">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    <span class="nav-label">Dashboard</span>
+                </div>
+                <div class="nav-item" data-page="cards">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="2" y="5" width="20" height="14" rx="2" />
+                        <line x1="2" y1="10" x2="22" y2="10" />
+                    </svg>
+                    <span class="nav-label">Cards</span>
+                </div>
+                <div class="nav-item" data-page="issue">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="16" />
+                        <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>
+                    <span class="nav-label">Issue Card</span>
+                </div>
+                <div class="nav-item" data-page="transactions">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    <span class="nav-label">Audit Log</span>
+                </div>
+                <div class="nav-item" data-page="analytics">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M18 20V10" />
+                        <path d="M12 20V4" />
+                        <path d="M6 20v-6" />
+                    </svg>
+                    <span class="nav-label">Analytics</span>
+                </div>
+                <div class="nav-item" data-page="promos">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
+                        <line x1="7" y1="7" x2="7.01" y2="7"></line>
+                    </svg>
+                    <span class="nav-label">Promo Codes</span>
+                </div>
+                <div class="nav-item" data-page="campaigns">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path
+                            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                    </svg>
+                    <span class="nav-label">Campaigns</span>
+                </div>
+                <div class="nav-item" data-page="loyalty">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    <span class="nav-label">Loyalty</span>
+                </div>
+                <div class="nav-item" data-page="superfans">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 8v8"></path>
+                        <path d="M8 12h8"></path>
+                    </svg>
+                    <span class="nav-label">SuperFans</span>
+                </div>
+            </nav>
+
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">A</div>
+                <div>
+                    <div id="adminUsername" style="font-weight:600;">Admin</div>
+                    <div class="text-muted" style="font-size:0.75rem;">Administrator</div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header Bar -->
+            <div class="header-bar">
+                <button class="btn btn-secondary btn-sm" id="logoutBtn">Logout</button>
+            </div>
+
+            <div class="content-area">
+                <!-- Dashboard Page -->
+                <div id="dashboardPage" class="page">
+                    <div class="page-header">
+                        <h1>Dashboard</h1>
+                        <button class="btn btn-primary" id="issueCardDashboardBtn">+ Issue New Card</button>
+                    </div>
+
+                    <!-- Analytical Dashboard Grid -->
+                    <div class="analytics-grid">
+                        <!-- Total Cards Analytics -->
+                        <div class="analytics-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Total Cards</div>
+                                <div class="analytics-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor"
+                                            stroke-width="2" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="analytics-value" id="statTotalCards">-</div>
+                            <div class="analytics-footer">
+                                <span class="analytics-trend positive" id="cardsTrend">
+                                    <span class="trend-icon">↗</span> <span id="cardsTrendValue">-</span>
+                                </span>
+                                <span class="analytics-label">all time</span>
+                            </div>
+                        </div>
+
+                        <!-- Active Cards -->
+                        <div class="analytics-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Active Cards</div>
+                                <div class="analytics-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path
+                                            d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"
+                                            stroke="currentColor" stroke-width="2" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="analytics-value" id="statActiveCards">-</div>
+                            <div class="analytics-footer">
+                                <span id="activePercentage" class="analytics-label">-</span>
+                                <span class="analytics-label">of total</span>
+                            </div>
+                        </div>
+
+                        <!-- Outstanding Value -->
+                        <div class="analytics-card accent-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Outstanding Value</div>
+                                <div class="analytics-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+                                        <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="analytics-value" id="statTotalValue">-</div>
+                            <div class="analytics-footer">
+                                <span class="analytics-label">total unredeemed</span>
+                            </div>
+                        </div>
+
+                        <!-- Total Redemptions -->
+                        <div class="analytics-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Redemptions</div>
+                                <div class="analytics-icon">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                        <path d="M20 12L4 12M20 12L14 6M20 12L14 18" stroke="currentColor"
+                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div class="analytics-value" id="statRedemptions">-</div>
+                            <div class="analytics-footer">
+                                <span class="analytics-label">transactions</span>
+                            </div>
+                        </div>
+
+                        <!-- Card Type Breakdown -->
+                        <div class="analytics-card wide-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Card Types</div>
+                            </div>
+                            <div class="breakdown-grid" id="cardTypeBreakdown">
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Value</div>
+                                    <div class="breakdown-value" id="typeValue">-</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Discount</div>
+                                    <div class="breakdown-value" id="typeDiscount">-</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Hybrid</div>
+                                    <div class="breakdown-value" id="typeHybrid">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Card Status Breakdown -->
+                        <div class="analytics-card wide-card">
+                            <div class="analytics-header">
+                                <div class="analytics-title">Status Overview</div>
+                            </div>
+                            <div class="breakdown-grid" id="cardStatusBreakdown">
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Active</div>
+                                    <div class="breakdown-value status-active" id="statusActive">-</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Frozen</div>
+                                    <div class="breakdown-value status-frozen" id="statusFrozen">-</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Revoked</div>
+                                    <div class="breakdown-value status-revoked" id="statusRevoked">-</div>
+                                </div>
+                                <div class="breakdown-item">
+                                    <div class="breakdown-label">Exhausted</div>
+                                    <div class="breakdown-value status-exhausted" id="statusExhausted">-</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" style="margin-top: var(--space-xl);">
+                        <h3 class="mb-lg">Recent Activity</h3>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Card</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>By</th>
+                                    </tr>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTransactions"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Page -->
+                <div id="cardsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Gift Cards</h1>
+                        <div class="flex gap-md">
+                            <input type="file" id="importCsvInput" accept=".csv" class="hidden">
+                            <button class="btn btn-secondary"
+                                onclick="document.getElementById('importCsvInput').click()">Import CSV</button>
+                            <a href="/api/admin/cards/export/csv" class="btn btn-secondary" target="_blank">Export
+                                CSV</a>
+                            <button class="btn btn-primary" id="issueCardCardsBtn">+ New</button>
+                        </div>
+                    </div>
+
+                    <div class="filter-bar">
+                        <select id="filterStatus">
+                            <option value="">All Status</option>
+                            <option value="active">Active</option>
+                            <option value="frozen">Frozen</option>
+                            <option value="revoked">Revoked</option>
+                            <option value="exhausted">Exhausted</option>
+                        </select>
+                        <select id="filterTier">
+                            <option value="">All Tiers</option>
+                            <option value="standard">Standard</option>
+                            <option value="premium">Premium</option>
+                            <option value="vip">VIP</option>
+                        </select>
+                        <select id="filterType">
+                            <option value="">All Types</option>
+                            <option value="value">Value</option>
+                            <option value="discount">Discount</option>
+                            <option value="hybrid">Hybrid</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" id="applyFiltersBtn">Apply Filters</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Code</th>
+                                        <th>Tier</th>
+                                        <th>Type</th>
+                                        <th>Balance</th>
+                                        <th>Discount</th>
+                                        <th>Status</th>
+                                        <th>Issued</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cardsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Issue Card Page -->
+                <div id="issuePage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Issue Gift Card</h1>
+                    </div>
+
+                    <div class="card" style="max-width:600px;">
+                        <div class="tabs">
+                            <button class="tab active" data-tab="single">Single Card</button>
+                            <button class="tab" data-tab="bulk">Bulk Issue</button>
+                        </div>
+
+                        <!-- Single Card Form -->
+                        <form id="issueCardForm">
+                            <div class="form-group">
+                                <label class="form-label">Card Tier</label>
+                                <select id="issueTier" class="form-input" required>
+                                    <option value="standard">Standard</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="vip">VIP</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Card Type</label>
+                                <select id="issueType" class="form-input" required>
+                                    <option value="value">Value (Stored Balance)</option>
+                                    <option value="discount">Discount (Percentage Off)</option>
+                                    <option value="hybrid">Hybrid (Value + Discount)</option>
+                                </select>
+                            </div>
+
+                            <div id="valueFields">
+                                <div class="form-group">
+                                    <label class="form-label">Currency</label>
+                                    <select id="issueCurrency" class="form-input">
+                                        <option value="USD">USD ($)</option>
+                                        <option value="EUR">EUR (€)</option>
+                                        <option value="GBP">GBP (£)</option>
+                                        <option value="NGN">NGN (₦)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Amount</label>
+                                    <input type="text" id="issueValue" class="form-input" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div id="discountFields" class="hidden">
+                                <div class="form-group">
+                                    <label class="form-label">Discount Percentage (%)</label>
+                                    <input type="number" id="issueDiscount" class="form-input" placeholder="20" min="1"
+                                        max="100">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Number of Uses (leave empty for unlimited)</label>
+                                    <input type="number" id="issueUses" class="form-input" placeholder="Unlimited"
+                                        min="1">
+                                </div>
+                            </div>
+
+                            <div id="bulkField" class="form-group hidden">
+                                <label class="form-label">Quantity</label>
+                                <input type="number" id="issueQuantity" class="form-input" value="1" min="1" max="100">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label">Expiration</label>
+                                <div class="flex gap-sm mb-sm">
+                                    <button type="button" class="btn btn-sm btn-secondary expiry-preset"
+                                        data-months="3">3 Months</button>
+                                    <button type="button" class="btn btn-sm btn-secondary expiry-preset"
+                                        data-months="6">6 Months</button>
+                                    <button type="button" class="btn btn-sm btn-secondary expiry-preset"
+                                        data-months="12">1 Year</button>
+                                </div>
+                                <input type="date" id="issueExpiry" class="form-input" placeholder="Select date">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-full" id="issueBtn">Issue Card</button>
+                        </form>
+
+                        <!-- Issue Result -->
+                        <div id="issueResult" class="hidden">
+                            <div class="alert alert-success">Card Issued</div>
+
+                            <div id="singleCardResult">
+                                <p class="text-muted mb-md">Save this code:</p>
+                                <div class="card-code-new">
+                                    <span id="newCardCode">XXXX-XXXX-XXXX-XXXX</span>
+                                    <button class="copy-button" id="copyCodeBtn">Copy</button>
+                                </div>
+                            </div>
+
+                            <div id="bulkCardsResult" class="hidden">
+                                <p class="text-muted mb-md">Cards issued:</p>
+                                <div class="bulk-cards-list" id="bulkCardsList"></div>
+                                <button class="btn btn-secondary w-full" id="downloadBulkCodesBtn">Download All
+                                    Codes</button>
+                            </div>
+
+                            <button class="btn btn-primary w-full mt-lg" id="issueAnotherBtn">Issue Another</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transactions Page -->
+                <div id="transactionsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Audit Log</h1>
+                    </div>
+
+                    <div class="filter-bar">
+                        <select id="filterTxType">
+                            <option value="">All Types</option>
+                            <option value="issue">Issue</option>
+                            <option value="redeem">Redeem</option>
+                            <option value="discount_apply">Discount Apply</option>
+                            <option value="freeze">Freeze</option>
+                            <option value="unfreeze">Unfreeze</option>
+                            <option value="revoke">Revoke</option>
+                        </select>
+                        <button class="btn btn-secondary btn-sm" id="applyTxFiltersBtn">Apply Filter</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Card</th>
+                                        <th>Type</th>
+                                        <th>Amount</th>
+                                        <th>Balance Change</th>
+                                        <th>By</th>
+                                        <th>Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Page -->
+                <div id="analyticsPage" class="page hidden">
+                    <div class="page-header"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <h1>Analytics</h1>
+                        <select id="analyticsPeriod"
+                            style="padding: 8px 16px; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff;">
+                            <option value="7d">Last 7 Days</option>
+                            <option value="30d" selected>Last 30 Days</option>
+                            <option value="90d">Last 90 Days</option>
+                            <option value="365d">Last Year</option>
+                        </select>
+                    </div>
+
+                    <!-- KPI Cards -->
+                    <div class="stats-grid" id="analyticsKPIs" style="margin-bottom: 24px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Cards</div>
+                            <div class="stat-value" id="kpiTotalCards">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active Balance</div>
+                            <div class="stat-value" id="kpiActiveBalance">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Redeemed (Period)</div>
+                            <div class="stat-value" id="kpiRedeemed">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Utilization Rate</div>
+                            <div class="stat-value" id="kpiUtilization">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Cards by Tier</h3>
+                            <div id="tierChart"
+                                style="height: 200px; display: flex; align-items: flex-end; gap: 12px; justify-content: center;">
+                            </div>
+                        </div>
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Cards by Type</h3>
+                            <div id="typeChart"
+                                style="height: 200px; display: flex; align-items: flex-end; gap: 12px; justify-content: center;">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart -->
+                    <div class="card" style="padding: 20px; margin-bottom: 24px;">
+                        <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Redemption Trend</h3>
+                        <div id="trendChart" style="height: 200px; display: flex; align-items: flex-end; gap: 4px;">
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity & Expiring -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Recent Redemptions</h3>
+                            <div id="recentRedemptions" style="font-size: 0.875rem;"></div>
+                        </div>
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Expiring Soon</h3>
+                            <div id="expiringCards" style="font-size: 0.875rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Promos Page (Old Campaigns) -->
+                <div id="promosPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Promo Codes</h1>
+                    </div>
+                    <div class="card" style="max-width:600px;">
+                        <h3 class="mb-lg">Create New Promo Campaign</h3>
+                        <form id="createPromoForm">
+                            <div class="form-group">
+                                <label class="form-label">Campaign Name</label>
+                                <input type="text" id="promoName" class="form-input" placeholder="Summer Sale 2025"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Discount Percentage (%)</label>
+                                <input type="number" id="promoDiscount" class="form-input" placeholder="20" min="1"
+                                    max="100" required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Number of Cards to Generate</label>
+                                <input type="number" id="promoCount" class="form-input" value="50" min="1" max="1000"
+                                    required>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Code Prefix</label>
+                                <input type="text" id="promoPrefix" class="form-input" placeholder="SUMMER"
+                                    maxlength="10">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Max Uses Per Card</label>
+                                <input type="number" id="promoUses" class="form-input" placeholder="1" min="1">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Expiration Date</label>
+                                <input type="date" id="promoExpiry" class="form-input" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-full">Generate Promo Codes</button>
+                        </form>
+                        <div id="promoResult" class="hidden mt-lg">
+                            <div class="alert alert-success">Promo Campaign Created!</div>
+                            <p class="text-muted">Generated <span id="promoResultCount">0</span> codes.</p>
+                            <a href="/api/admin/cards/export/csv" class="btn btn-secondary w-full mt-md">Download
+                                CSV</a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Engagement Campaigns Page (New) -->
+                <div id="campaignsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Engagement Campaigns</h1>
+                        <button class="btn btn-primary" onclick="showCreateCampaignModal()">+ New Campaign</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Type</th>
+                                        <th>Points</th>
+                                        <th>Status</th>
+                                        <th>Start Date</th>
+                                        <th>End Date</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="engagementCampaignsTable">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">Loading campaigns...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Campaign Modal (New) -->
+                <div class="modal-overlay" id="campaignModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3>Create Engagement Campaign</h3>
+                            <button class="modal-close" onclick="closeCampaignModal()">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding: 24px;">
+                            <form id="createEngagementForm">
+                                <div class="form-group">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" id="engTitle" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Type</label>
+                                    <select id="engType" class="form-input" required>
+                                        <option value="stream">Streaming Challenge</option>
+                                        <option value="social">Social Action</option>
+                                        <option value="event">Event Check-in</option>
+                                        <option value="quiz">Quiz</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="engDesc" class="form-input" rows="3"></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Points Reward</label>
+                                    <input type="number" id="engPoints" class="form-input" value="100" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">End Date</label>
+                                    <input type="date" id="engEndDate" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Image URL (Optional)</label>
+                                    <input type="text" id="engImage" class="form-input" placeholder="https://...">
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full">Create Campaign</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loyalty Page -->
+                <div id="loyaltyPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Loyalty & Referrals</h1>
+                    </div>
+                    <!-- Placeholder for Loyalty Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Loyalty Members</div>
+                            <div class="stat-value" id="loyaltyTotalMembers">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Referrals Completed</div>
+                            <div class="stat-value" id="loyaltyTotalReferrals">-</div>
+                        </div>
+                    </div>
+                    <div class="card mt-xl">
+                        <h3>Loyalty Tiers Configuration</h3>
+                        <p class="text-muted">Bronze (0 pts), Silver (1000 pts), Gold (5000 pts), Platinum (10000 pts)
+                        </p>
+                    </div>
+                </div>
+
+                <!-- SuperFans Page -->
+                <div id="superfansPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>SuperFan Hub Users</h1>
+                        <div style="display:flex;gap:12px;">
+                            <input type="text" class="form-input" id="superfanSearch" placeholder="Search users..."
+                                style="width:250px;">
+                            <select class="form-input" id="superfanTierFilter" style="width:150px;">
+                                <option value="">All Tiers</option>
+                                <option value="bronze">Bronze</option>
+                                <option value="silver">Silver</option>
+                                <option value="gold">Gold</option>
+                                <option value="platinum">Platinum</option>
+                                <option value="diamond">Diamond</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- SuperFan Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Users</div>
+                            <div class="stat-value" id="sfTotalUsers">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active Cards</div>
+                            <div class="stat-value" id="sfActiveCards">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Points Issued</div>
+                            <div class="stat-value" id="sfTotalPoints">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">New This Week</div>
+                            <div class="stat-value" id="sfNewThisWeek">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Users Table -->
+                    <div class="card mt-xl">
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Card #</th>
+                                        <th>Tier</th>
+                                        <th>Points</th>
+                                        <th>Status</th>
+                                        <th>Joined</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="superfansTableBody">
+                                    <tr>
+                                        <td colspan="8" style="text-align:center;color:var(--text-muted);">Loading
+                                            users...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Leaderboard -->
+                    <div class="card mt-xl">
+                        <h3 style="margin-bottom:var(--space-lg);">Top Fans Leaderboard</h3>
+                        <div id="leaderboardList">
+                            <p style="color:var(--text-muted);">Loading leaderboard...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Card Action Modal -->
+    <div class="modal-overlay" id="cardModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">Card Details</h3>
+                <button class="modal-close" id="modalCloseBtn">&times;</button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="successModal" class="success-modal">
+        <div class="success-modal-content">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="none">
+                    <path d="M5 13l4 4L19 7" stroke="#000" stroke-width="3" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+            </div>
+            <div class="success-title" id="successTitle">Success!</div>
+            <div class="success-message" id="successMessage">Operation completed successfully</div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+
+</html>

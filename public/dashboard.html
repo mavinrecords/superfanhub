@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Your Mavin SuperFan Hub Dashboard">
+    <title>Dashboard | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000000;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --text-muted: #555555;
+            --success: #10b981;
+            --spotify-green: #1ed760;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: var(--bg-black);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.6875rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border-radius: 8px;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .sidebar-footer {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            border-color: var(--text-gray);
+            color: var(--text-white);
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 240px;
+            padding: 48px;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            margin-bottom: 48px;
+        }
+
+        .page-greeting {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        /* ══════════════════════════════════════════
+           LOYALTY CARD — Liquid Glass Chrome Black
+           ══════════════════════════════════════════ */
+        .loyalty-card-wrap {
+            margin-bottom: 40px;
+            perspective: 1400px;
+        }
+
+        .loyalty-card {
+            position: relative;
+            width: 100%;
+            max-width: 480px;
+            aspect-ratio: 85.6 / 53.98;
+            border-radius: 20px;
+            overflow: hidden;
+            isolation: isolate;
+
+            /* ── Surface: deep black base ── */
+            background-color: #06070d;
+
+            /* ── Chrome gradient: premium dark metal, subtle directional sheen ── */
+            background-image:
+                linear-gradient(138deg,
+                    #07080e 0%,
+                    /* void black */
+                    #0d0e17 7%,
+                    /* near-black */
+                    #131420 14%,
+                    /* very dark navy-black */
+                    #1a1b27 22%,
+                    /* dark charcoal */
+                    #21222e 30%,
+                    /* charcoal */
+                    #292a38 38%,
+                    /* lifting — dark slate */
+                    #333444 45%,
+                    /* upper-mid lift */
+                    #3d3e4e 49%,
+                    /* approaching peak */
+                    #434455 51%,
+                    /* peak — controlled medium-dark grey, NOT white */
+                    #393a4a 53%,
+                    /* descent */
+                    #2e2f3d 58%,
+                    /* back to dark */
+                    #20212d 66%,
+                    /* dark charcoal */
+                    #141520 76%,
+                    /* very dark */
+                    #0d0e18 87%,
+                    /* near-black */
+                    #08090f 95%,
+                    /* void */
+                    #050610 100%
+                    /* void */
+                );
+
+            /* ── Borders: asymmetric edge-lit glass ── */
+            box-shadow:
+                /* outer ring — barely visible */
+                0 0 0 1px rgba(255, 255, 255, 0.07),
+                /* top edge bright highlight */
+                inset 0 1px 0 rgba(255, 255, 255, 0.28),
+                /* left edge softer highlight */
+                inset 1px 0 0 rgba(255, 255, 255, 0.09),
+                /* bottom/right dark edges = depth */
+                inset 0 -1px 0 rgba(0, 0, 0, 0.6),
+                inset -1px 0 0 rgba(0, 0, 0, 0.35),
+                /* ambient drop shadows */
+                0 4px 12px rgba(0, 0, 0, 0.55),
+                0 16px 40px rgba(0, 0, 0, 0.7),
+                0 40px 80px rgba(0, 0, 0, 0.55),
+                0 60px 120px rgba(0, 0, 0, 0.35);
+
+            transition: box-shadow .5s ease;
+            cursor: default;
+            margin-bottom: 20px;
+            animation: card-enter 0.72s cubic-bezier(0.23, 1, 0.32, 1) both;
+        }
+
+        /* Hover box-shadow driven by JS .is-active class */
+        .loyalty-card.is-active {
+            box-shadow:
+                0 0 0 1px rgba(162, 129, 46, 0.28),
+                inset 0 1px 0 rgba(255, 255, 255, 0.32),
+                inset 1px 0 0 rgba(255, 255, 255, 0.12),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.65),
+                inset -1px 0 0 rgba(0, 0, 0, 0.4),
+                0 8px 20px rgba(0, 0, 0, 0.65),
+                0 28px 60px rgba(0, 0, 0, 0.82),
+                0 60px 110px rgba(0, 0, 0, 0.65),
+                0 0 48px rgba(162, 129, 46, 0.10),
+                0 0 90px rgba(162, 129, 46, 0.05);
+        }
+
+        .loyalty-card.bronze,
+        .loyalty-card.silver,
+        .loyalty-card.gold,
+        .loyalty-card.platinum,
+        .loyalty-card.diamond {
+            /* unified chrome look — tier shown via badge only */
+        }
+
+        /* ════════════════════════════════════
+           GLASS MOTION — keyframes
+           ════════════════════════════════════ */
+
+        /* Card slides + tilts into view on first render */
+        @keyframes card-enter {
+            from {
+                opacity: 0;
+                transform: rotateX(8deg) translateY(30px) scale(0.96);
+            }
+
+            to {
+                opacity: 1;
+                transform: rotateX(0deg) translateY(0) scale(1);
+            }
+        }
+
+        /* Diagonal light streak that crosses the card surface */
+        @keyframes glass-sweep {
+            0% {
+                left: -85%;
+                opacity: 0;
+            }
+
+            4% {
+                opacity: 1;
+            }
+
+            48%,
+            100% {
+                left: 160%;
+                opacity: 0;
+            }
+        }
+
+        /* Gold ring breathes with a warm glow */
+        @keyframes ring-glow {
+
+            0%,
+            100% {
+                filter: drop-shadow(0 0 6px rgba(196, 160, 58, 0.55)) drop-shadow(0 0 2px rgba(247, 224, 104, 0.3));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 16px rgba(196, 160, 58, 1.0)) drop-shadow(0 0 6px rgba(247, 224, 104, 0.75));
+            }
+        }
+
+        /* ── Shimmer sweep layer ── */
+        .card-shimmer {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 4;
+        }
+
+        .card-shimmer::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -85%;
+            width: 46%;
+            height: 200%;
+            background: linear-gradient(105deg,
+                    transparent 0%,
+                    rgba(255, 255, 255, 0.00) 18%,
+                    rgba(255, 255, 255, 0.055) 36%,
+                    rgba(255, 255, 255, 0.17) 50%,
+                    rgba(255, 255, 255, 0.055) 64%,
+                    rgba(255, 255, 255, 0.00) 82%,
+                    transparent 100%);
+            transform: skewX(-22deg);
+            animation: glass-sweep 5.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            animation-delay: 1.8s;
+        }
+
+        /* Pause shimmer while JS tilt is active */
+        .loyalty-card.is-active .card-shimmer::after {
+            animation-play-state: paused;
+        }
+
+        /* ── Mouse-tracking specular (JS sets background dynamically) ── */
+        .card-specular {
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* ── Layer 1: SVG noise grain — soft-light keeps it subtle ── */
+        .loyalty-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+            background-size: 200px 200px;
+            mix-blend-mode: soft-light;
+            /* was overlay — overlay amplifies brightness */
+            opacity: 0.18;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* ── Layer 2: Subtle glass depth blobs ── */
+        .loyalty-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                /* top-left faint silver lift */
+                radial-gradient(ellipse 55% 50% at 14% 8%,
+                    rgba(160, 162, 185, 0.08) 0%,
+                    transparent 65%),
+                /* top-right gold warmth */
+                radial-gradient(ellipse 40% 55% at 90% 5%,
+                    rgba(162, 129, 46, 0.09) 0%,
+                    transparent 68%),
+                /* bottom shadow depth */
+                radial-gradient(ellipse 90% 45% at 50% 108%,
+                    rgba(0, 0, 0, 0.5) 0%,
+                    transparent 68%);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .card-inner {
+            position: relative;
+            z-index: 3;
+            padding: 18px 22px 16px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .card-title {
+            font-size: 0.72rem;
+            /* 11.5px — was 9.6px */
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: rgba(220, 222, 235, 0.82);
+            /* was 55% opacity */
+            white-space: nowrap;
+            text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+
+        /* ── Points pill — absolute over card (Edit 2) ── */
+        .card-points-pill {
+            position: absolute;
+            top: 18px;
+            right: 20px;
+            z-index: 6;
+            display: inline-flex;
+            align-items: baseline;
+            gap: 7px;
+            padding: 7px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-bottom-color: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px) saturate(1.4);
+            -webkit-backdrop-filter: blur(20px) saturate(1.4);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.18),
+                0 4px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .pill-label {
+            font-size: 0.65rem;
+            /* was 8.32px → now ~10.4px */
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.72);
+            /* was 45% → 72% */
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .pill-value {
+            font-size: 0.82rem;
+            /* was 0.75rem */
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.98);
+            letter-spacing: 0.05em;
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+
+        /* ── Row: ring (logo inside) + card code ── */
+        .card-number-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        /* Gold arc ring — logo centered inside (Edit 1) */
+        .card-ring {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            position: relative;
+            background: conic-gradient(from 95deg,
+                    transparent 0deg,
+                    #3d2a08 20deg,
+                    #7a5e1a 55deg,
+                    #A2812E 90deg,
+                    #c8991e 130deg,
+                    #edd84a 165deg,
+                    #f7e068 178deg,
+                    #edd84a 191deg,
+                    #c8991e 220deg,
+                    #A2812E 260deg,
+                    #7a5e1a 295deg,
+                    #3d2a08 315deg,
+                    transparent 330deg,
+                    transparent 360deg);
+            filter: drop-shadow(0 0 8px rgba(196, 160, 58, 0.65)) drop-shadow(0 0 2px rgba(247, 224, 104, 0.4));
+            animation: ring-glow 3s ease-in-out infinite;
+        }
+
+        /* dark hole layer behind the logo */
+        .card-ring-inner {
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: linear-gradient(138deg, #2a2b35 0%, #18191f 40%, #0c0d12 100%);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.07), inset 0 -1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* logo fills the ring hole (Edit 1) */
+        .card-logo-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            padding: 9px;
+            object-fit: contain;
+            mix-blend-mode: screen;
+            filter: brightness(1.2) contrast(1.1);
+            z-index: 1;
+        }
+
+        .card-code-text {
+            flex: 1;
+            font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+            font-size: 0.78rem;
+            /* fixed 12.5px — was clamp resolving to 11.52px */
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            color: #f0f1fa;
+            /* brighter near-white */
+            font-variant-numeric: tabular-nums;
+            /* dark halo makes white text legible on both dark AND bright chrome */
+            text-shadow:
+                0 1px 3px rgba(0, 0, 0, 1),
+                0 2px 12px rgba(0, 0, 0, 0.95),
+                0 0 30px rgba(0, 0, 0, 0.8);
+        }
+
+        /* ── Row: Cardholder name + tier badge ── */
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .card-holder {
+            font-size: 0.82rem;
+            /* was clamp resolving to 10.72px → now 13.1px */
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: rgba(235, 236, 248, 0.9);
+            /* was 72% opacity */
+            text-shadow:
+                0 1px 4px rgba(0, 0, 0, 0.95),
+                0 2px 12px rgba(0, 0, 0, 0.8);
+            max-width: 240px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .card-tier-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            /* was 0.42rem = 6.72px → now 9.6px */
+            font-weight: 800;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            background: rgba(162, 129, 46, 0.18);
+            color: rgba(235, 195, 90, 0.98);
+            /* brighter gold */
+            border: 1px solid rgba(162, 129, 46, 0.5);
+            box-shadow: inset 0 1px 0 rgba(255, 220, 120, 0.15),
+                0 0 12px rgba(162, 129, 46, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+
+        /* Tier progress bar below card */
+        .tier-progress-wrap {
+            max-width: 480px;
+            margin-top: 2px;
+        }
+
+        .tier-progress-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            margin-bottom: 7px;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .tier-progress-bar {
+            height: 3px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.4);
+        }
+
+        .tier-progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg,
+                    rgba(162, 129, 46, 0.7) 0%,
+                    rgba(220, 180, 60, 0.9) 60%,
+                    rgba(247, 224, 104, 1) 100%);
+            box-shadow: 0 0 8px rgba(220, 180, 60, 0.4);
+            transition: width .9s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        /* No-card state */
+        .no-card {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .no-card-icon {
+            font-size: 3rem;
+            margin-bottom: 24px;
+            opacity: 0.3;
+        }
+
+        .no-card-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .no-card-text {
+            color: var(--text-gray);
+            margin-bottom: 32px;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .apply-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, var(--mavin-gold), #c9a80c);
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.8125rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(162, 129, 46, .4);
+        }
+
+        .apply-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(162, 129, 46, .6);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 24px;
+            margin-bottom: 48px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 28px;
+        }
+
+        .stat-icon {
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+            opacity: 0.6;
+        }
+
+        .stat-label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+        }
+
+        /* Sections */
+        .section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+        }
+
+        .section-link {
+            font-size: 0.75rem;
+            color: var(--mavin-gold);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .section-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Spotify Connect */
+        .spotify-connect {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 24px;
+            background: rgba(30, 215, 96, 0.05);
+            border: 1px solid rgba(30, 215, 96, 0.2);
+        }
+
+        .spotify-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(30, 215, 96, 0.15);
+            color: var(--spotify-green);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spotify-info {
+            flex: 1;
+        }
+
+        .spotify-title {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .spotify-text {
+            font-size: 0.875rem;
+            color: var(--text-gray);
+        }
+
+        .spotify-btn {
+            padding: 12px 24px;
+            background: var(--spotify-green);
+            border: none;
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .spotify-btn:hover {
+            background: #1db954;
+        }
+
+        /* Activity List */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
+        }
+
+        .activity-icon.earn {
+            color: var(--success);
+        }
+
+        .activity-icon.redeem {
+            color: #ef4444;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .activity-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .activity-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .activity-points {
+            font-weight: 600;
+        }
+
+        .activity-points.positive {
+            color: var(--success);
+        }
+
+        .activity-points.negative {
+            color: #ef4444;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: var(--text-gray);
+            font-size: 0.875rem;
+        }
+
+        /* Task Master widget */
+        .task-widget {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 24px;
+            background: rgba(162, 129, 46, 0.06);
+            border: 1px solid rgba(162, 129, 46, 0.2);
+            border-radius: 8px;
+            text-decoration: none;
+            color: var(--text-white);
+            transition: all 0.2s ease;
+            margin-bottom: 24px;
+        }
+
+        .task-widget:hover {
+            border-color: rgba(162, 129, 46, 0.5);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .task-widget-icon {
+            font-size: 1.5rem;
+        }
+
+        .task-widget-info {
+            flex: 1;
+        }
+
+        .task-widget-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .task-widget-sub {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .task-widget-arrow {
+            color: var(--mavin-gold);
+            font-size: 1.25rem;
+        }
+
+        .fan-tier-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.625rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            background: rgba(162, 129, 46, 0.2);
+            color: var(--mavin-gold);
+        }
+
+        /* Mobile Header */
+        .mobile-header {
+            display: none;
+            padding: 16px 20px;
+            background: var(--bg-black);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mobile-header-logo {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+            letter-spacing: 0.1em;
+        }
+
+        .mobile-nav-links {
+            display: flex;
+            gap: 16px;
+        }
+
+        .mobile-nav-links a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .mobile-nav-links a:hover {
+            color: var(--text-white);
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .mobile-header {
+                display: flex;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px 16px;
+            }
+
+            .loyalty-card {
+                padding: 32px 24px;
+            }
+
+            .points-value {
+                font-size: 3rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Mobile Header -->
+    <div class="mobile-header">
+        <span class="mobile-header-logo">MAVIN</span>
+        <nav class="mobile-nav-links">
+            <a href="/tasks">Tasks</a>
+            <a href="/leaderboard">Leaderboard</a>
+            <a href="/rewards">Rewards</a>
+        </nav>
+    </div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">MAVIN</div>
+        <div class="sidebar-subtitle">SuperFan Hub</div>
+
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard" class="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard</a></li>
+            <li><a href="/tasks">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>
+                    Tasks & Rewards</a></li>
+            <li><a href="/leaderboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                    Leaderboard</a></li>
+            <li><a href="/rewards">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>
+                    Rewards Shop</a></li>
+            <li><a href="/squads">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Squads</a></li>
+            <li><a href="/gift-cards">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                    Gift Cards</a></li>
+            <li><a href="/campaigns">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                        <path
+                            d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z">
+                        </path>
+                    </svg>
+                    Campaigns</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div>
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-email" id="userEmail">...</div>
+                </div>
+            </div>
+            <button class="logout-btn" data-action="logout">Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <header class="page-header">
+            <div class="page-greeting">Welcome back</div>
+            <h1 class="page-title" id="greetingName">Loading...</h1>
+        </header>
+
+        <!-- Loyalty Card -->
+        <div id="loyaltySection" class="loyalty-card-wrap">
+            <div class="loyalty-card bronze">
+                <div class="card-inner">
+                    <div
+                        style="text-align:center;color:rgba(255,255,255,.3);font-size:.75rem;letter-spacing:.1em;padding-top:24px">
+                        Loading your card…</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 18v-6a9 9 0 0 1 18 0v6"></path>
+                        <path
+                            d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z">
+                        </path>
+                    </svg>
+                </div>
+                <div class="stat-label">Minutes Streamed</div>
+                <div class="stat-value" id="minutesStreamed">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                        </polygon>
+                    </svg>
+                </div>
+                <div class="stat-label">This Month</div>
+                <div class="stat-value" id="monthPoints">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                </div>
+                <div class="stat-label">Referrals</div>
+                <div class="stat-value" id="referralCount">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                </div>
+                <div class="stat-label">Gift Cards</div>
+                <div class="stat-value" id="giftCount">0</div>
+            </div>
+        </div>
+
+        <!-- Task Master Quick Link -->
+        <a href="/tasks" class="task-widget" id="taskWidget">
+            <div class="task-widget-icon">🎯</div>
+            <div class="task-widget-info">
+                <div class="task-widget-title">Tasks & Rewards <span class="fan-tier-badge" id="fanTierBadge">FAN</span>
+                </div>
+                <div class="task-widget-sub" id="taskWidgetSub">Loading your progress...</div>
+            </div>
+            <div class="task-widget-arrow">→</div>
+        </a>
+
+        <!-- Spotify Connection -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Spotify Connection</h2>
+            </div>
+            <div class="spotify-connect" id="spotifyConnectWrap">
+                <div class="spotify-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path
+                            d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                    </svg>
+                </div>
+                <div class="spotify-info">
+                    <div class="spotify-title">Connect Spotify</div>
+                    <div class="spotify-text">Link your account to earn points from streaming Mavin artists</div>
+                </div>
+                <!-- Pathfix SDK triggers OAuth popup via data-oauth-command -->
+                <button id="pathfixSpotifyBtn" class="spotify-btn" data-action="connectSpotify"
+                    data-oauth-command="spotify.call" data-oauth-consent-mode="popup">Connect</button>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Recent Activity</h2>
+                <a href="#" class="section-link">View All</a>
+            </div>
+            <div class="activity-list" id="activityList">
+                <div class="empty-state">Connect Spotify to start earning points</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+        let spotifyConnected = false;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('authToken');
+            if (!token) { window.location.href = '/login'; return; }
+
+            // Spotify callback toast (same-tab redirect fallback)
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('spotify_connected')) {
+                showNotification('Spotify connected! 🎵', 'success');
+                window.history.replaceState({}, '', '/dashboard');
+            } else if (urlParams.get('spotify_error')) {
+                showNotification('Spotify error: ' + urlParams.get('spotify_error'), 'error');
+                window.history.replaceState({}, '', '/dashboard');
+            }
+
+            // Listen for popup callback postMessage (no page reload needed)
+            window.addEventListener('message', (event) => {
+                if (!event.data || typeof event.data !== 'object') return;
+                if (event.data.type === 'spotify_connected') {
+                    showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
+                    spotifyConnected = true;
+                    renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                    // Kick off first sync in background
+                    syncSpotify().catch(() => { });
+                } else if (event.data.type === 'spotify_error') {
+                    showNotification('Spotify connection failed: ' + (event.data.error || 'unknown error'), 'error');
+                }
+            });
+
+            try {
+                const res = await fetch('/api/user/session', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (!data.authenticated) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+                currentUser = data.user;
+                initDashboard();
+            } catch (e) {
+                console.error('Session error:', e);
+                window.location.href = '/login';
+            }
+        });
+
+        function initDashboard() {
+            const name = currentUser.name;
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userAvatar').textContent = name.charAt(0).toUpperCase();
+            document.getElementById('greetingName').textContent = name.split(' ')[0];
+
+            // Load Pathfix SDK with this user's ID (enables Spotify OAuth popup)
+            loadPathfixSDK(currentUser.id);
+
+            // Load all data in parallel — loadSpotifyStatus uses browser-side Pathfix check
+            Promise.all([
+                loadLoyaltyCard(),
+                loadSpotifyStatus(),
+                loadStreamingStats(),
+                loadUserStats(),
+                loadActivity(),
+                loadTaskProgress()
+            ]);
+        }
+
+        async function loadLoyaltyCard() {
+            const section = document.getElementById('loyaltySection');
+            const token = localStorage.getItem('authToken');
+
+            const TIER_NEXT = { bronze: { next: 'Silver', need: 1000 }, silver: { next: 'Gold', need: 5000 }, gold: { next: 'Platinum', need: 15000 }, platinum: { next: 'Diamond', need: 50000 }, diamond: { next: null, need: null } };
+
+            function buildCard(card) {
+                const tier = card.tier || 'bronze';
+                const pts = card.points || 0;
+                const lt = card.lifetime_points || pts;
+                const tierInfo = TIER_NEXT[tier] || {};
+                const pct = tierInfo.need ? Math.min(100, Math.round((lt / tierInfo.need) * 100)) : 100;
+                const progressLabel = tierInfo.next
+                    ? `${lt.toLocaleString()} / ${tierInfo.need.toLocaleString()} pts to ${tierInfo.next}`
+                    : 'Maximum tier reached';
+
+                // Card code — show full code formatted like "MVN · ABCD · 1234 · EFGH"
+                const rawCode = (card.cardNumber || card.card_number || 'MVN-XXXX-XXXX-XXXX');
+                const parts = rawCode.split('-');
+                // ref: SolCard shows  "•••• 8888" — for loyalty we show full code
+                const displayCode = parts.length === 4
+                    ? `${parts[0]}  ····  ${parts[1]} · ${parts[2]} · ${parts[3]}`
+                    : rawCode;
+
+                // Holder name — "A. LAST NAME" style like SolCard's "A. SOLCARD"
+                const fullName = (card.name || currentUser?.name || '').toUpperCase().trim();
+                const nameParts = fullName.split(' ');
+                const holderDisplay = nameParts.length >= 2
+                    ? `${nameParts[0][0]}. ${nameParts.slice(1).join(' ')}`
+                    : fullName;
+
+                return `
+                <div class="loyalty-card ${tier}">
+
+                    <!-- Glass motion layers (JS-animated) -->
+                    <div class="card-shimmer"></div>
+                    <div class="card-specular"></div>
+
+                    <!-- Points pill floats above all layers -->
+                    <div class="card-points-pill">
+                        <span class="pill-label">Available Points</span>
+                        <span class="pill-value">${pts.toLocaleString()} PTS</span>
+                    </div>
+
+                    <div class="card-inner">
+
+                        <!-- Card title -->
+                        <div class="card-title">Mavin SuperFan Loyalty Card</div>
+
+                        <!-- Row 1: arc ring (logo inside) + card code -->
+                        <div class="card-number-row">
+                            <div class="card-ring">
+                                <div class="card-ring-inner"></div>
+                                <!-- Edit 1: logo moved inside ring, centered over the inner hole -->
+                                <img src="/images/logo.png" class="card-logo-img" alt="Mavin Records">
+                            </div>
+                            <div class="card-code-text">${displayCode}</div>
+                            <!-- Edits 3-5: nc-left, nc-right, network-label removed -->
+                        </div>
+
+                        <!-- Row 2: Cardholder name + tier badge -->
+                        <div class="card-bottom">
+                            <div class="card-holder">${holderDisplay}</div>
+                            <div class="card-tier-badge">${tier.toUpperCase()}</div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="tier-progress-wrap">
+                    <div class="tier-progress-labels">
+                        <span>${tier.toUpperCase()}</span>
+                        <span>${progressLabel}</span>
+                    </div>
+                    <div class="tier-progress-bar">
+                        <div class="tier-progress-fill" style="width:${pct}%"></div>
+                    </div>
+                </div>
+                `;
+            }
+
+            try {
+                const response = await fetch('/api/loyalty/card', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 404) {
+                    section.innerHTML = `
+                        <div class="loyalty-card bronze" style="display:flex;align-items:center;justify-content:center;">
+                            <div class="no-card">
+                                <div class="no-card-icon">
+                                    <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1">
+                                        <rect x="1" y="4" width="22" height="16" rx="3"></rect>
+                                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                                    </svg>
+                                </div>
+                                <h3 class="no-card-title">Get Your SuperFan Card</h3>
+                                <p class="no-card-text">Apply now to start earning points and unlock exclusive rewards</p>
+                                <button class="apply-btn" data-action="applyForCard">✦ Apply Now</button>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const card = await response.json();
+                section.innerHTML = buildCard(card);
+                initCardGlass(section.querySelector('.loyalty-card'));
+
+            } catch (error) {
+                console.error('Card error:', error);
+                section.innerHTML = `
+                    <div class="loyalty-card bronze" style="display:flex;align-items:center;justify-content:center;">
+                        <div class="no-card">
+                            <div class="no-card-icon"><svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.3)" stroke-width="1"><rect x="1" y="4" width="22" height="16" rx="3"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg></div>
+                            <h3 class="no-card-title">Get Your SuperFan Card</h3>
+                            <p class="no-card-text">Apply for a Mavin SuperFan Card to start earning points</p>
+                            <button class="apply-btn" data-action="applyForCard">✦ Apply Now</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // ── Pathfix SDK Loader ─────────────────────────────────────────────────
+        // Dynamically inject the Pathfix helper.js after we know the user's ID
+        function loadPathfixSDK(userId) {
+            // Guard: use the correct ID that setAttribute gives (pinc.helper)
+            if (document.getElementById('pinc.helper')) return;
+
+            const script = document.createElement('script');
+            script.src = 'https://labs.pathfix.com/helper.js';
+            script.setAttribute('id', 'pinc.helper');
+            script.setAttribute('modules', 'pinc.oauth.min');
+            script.setAttribute('data-user-id', String(userId));
+            script.setAttribute('data-public-key', '901B9B27-BCD0-482F-9F44-7443778A0542');
+
+            script.onload = () => {
+                console.log('[Pathfix] helper.js loaded, $pinc=', typeof $pinc);
+                // Pathfix SDK initialises asynchronously — wait briefly before using it
+                setTimeout(() => {
+                    console.log('[Pathfix] $pinc ready check:', typeof $pinc, typeof $pinc?.oauth);
+                    if (typeof $pinc === 'undefined' || !$pinc.oauth) {
+                        console.warn('[Pathfix] $pinc not available after delay — falling back to direct API check');
+                        loadSpotifyStatus();
+                        return;
+                    }
+                    // Listen for live connection events
+                    if ($pinc.events) {
+                        $pinc.events.on('$pinc.oauth', 'spotify.connected', () => {
+                            console.log('[Pathfix] spotify.connected event fired');
+                            showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
+                            spotifyConnected = true;
+                            renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                            syncSpotify();
+                        });
+                    }
+                    // Check current state
+                    $pinc.oauth.getState('spotify', (res) => {
+                        console.log('[Pathfix] getState result:', JSON.stringify(res));
+                        spotifyConnected = !!(res && res.connected);
+                        if (spotifyConnected) {
+                            renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                        } else {
+                            // Fallback: double-check via direct Pathfix API
+                            checkSpotifyViaPathfix().then(connected => {
+                                console.log('[Pathfix] direct API check connected:', connected);
+                                if (connected) {
+                                    spotifyConnected = true;
+                                    renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                                }
+                            });
+                        }
+                    });
+                }, 800);
+            };
+
+            script.onerror = (e) => {
+                console.error('[Pathfix] Failed to load helper.js:', e);
+                loadSpotifyStatus(); // fall back to direct API
+            };
+
+            document.head.appendChild(script);
+        }
+
+        /* ─────────────────────────────────────────────────────────────────
+           initCardGlass — mouse-tracking 3D tilt + glass specular highlight
+           Perspective lives on .loyalty-card-wrap (CSS), so we only apply
+           rotateX/Y to the card itself here.
+           ───────────────────────────────────────────────────────────────── */
+        function initCardGlass(cardEl) {
+            if (!cardEl) return;
+
+            const specular = cardEl.querySelector('.card-specular');
+            let raf = null;
+            let hovering = false;
+
+            // Normalised cursor position: -0.5 → +0.5 (centre = 0,0)
+            let tx = 0, ty = 0;   // target
+            let cx = 0, cy = 0;   // current (lerped)
+
+            const lerp = (a, b, t) => a + (b - a) * t;
+
+            function tick() {
+                // Smooth lerp — fast when hovered, slow spring-back when not
+                const speed = hovering ? 0.10 : 0.065;
+                cx = lerp(cx, hovering ? tx : 0, speed);
+                cy = lerp(cy, hovering ? ty : 0, speed);
+
+                const rotX = cy * -20;   // tilt forward/back  (±10°)
+                const rotY = cx * 24;   // tilt left/right    (±12°)
+                const liftY = hovering ? -8 : 0;
+                const sc = hovering ? 1.018 : 1;
+
+                cardEl.style.transform =
+                    `rotateX(${rotX.toFixed(3)}deg) rotateY(${rotY.toFixed(3)}deg)` +
+                    ` translateY(${liftY}px) scale(${sc})`;
+
+                const distX = Math.abs(cx - (hovering ? tx : 0));
+                const distY = Math.abs(cy - (hovering ? ty : 0));
+                const stillMoving = distX > 0.0008 || distY > 0.0008;
+
+                raf = (stillMoving || hovering) ? requestAnimationFrame(tick) : null;
+            }
+
+            cardEl.addEventListener('mouseenter', () => {
+                hovering = true;
+                cardEl.classList.add('is-active');
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(tick);
+            });
+
+            cardEl.addEventListener('mousemove', (e) => {
+                const r = cardEl.getBoundingClientRect();
+                tx = (e.clientX - r.left) / r.width - 0.5;
+                ty = (e.clientY - r.top) / r.height - 0.5;
+
+                // Move specular highlight to follow the cursor — glass refraction feel
+                if (specular) {
+                    const px = ((e.clientX - r.left) / r.width) * 100;
+                    const py = ((e.clientY - r.top) / r.height) * 100;
+                    specular.style.background =
+                        `radial-gradient(ellipse 54% 48% at ${px.toFixed(1)}% ${py.toFixed(1)}%,` +
+                        `rgba(255,255,255,0.22) 0%,` +
+                        `rgba(255,255,255,0.07) 36%,` +
+                        `transparent 65%)`;
+                }
+            });
+
+            cardEl.addEventListener('mouseleave', () => {
+                hovering = false;
+                tx = 0; ty = 0;
+                cardEl.classList.remove('is-active');
+                // Fade out specular
+                if (specular) specular.style.background = '';
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(tick);   // spring back to neutral
+            });
+        }
+
+        function connectSpotify() {
+            const PATHFIX_CONNECT = `https://labs.pathfix.com/integrate/page?public_key=901B9B27-BCD0-482F-9F44-7443778A0542&user_id=${currentUser?.id || ''}`;
+
+            if (typeof $pinc !== 'undefined' && $pinc.oauth) {
+                $pinc.oauth.connect('spotify');
+                return;
+            }
+
+            // Open Pathfix connect page in a popup
+            const popup = window.open(PATHFIX_CONNECT, 'pathfix_spotify', 'width=580,height=700,scrollbars=yes,resizable=yes');
+            if (!popup) {
+                // Popup blocked — fall back to same-tab redirect
+                window.location.href = PATHFIX_CONNECT;
+                return;
+            }
+
+            // Poll until popup closes, then check via Pathfix directly (server is IP-blocked)
+            const pollTimer = setInterval(async () => {
+                if (!popup || popup.closed) {
+                    clearInterval(pollTimer);
+                    await new Promise(r => setTimeout(r, 1200)); // let Pathfix save token
+                    const connected = await checkSpotifyViaPathfix();
+                    if (connected) {
+                        spotifyConnected = true;
+                        renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                        showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
+                        syncSpotify().catch(() => { });
+                    } else {
+                        showNotification('Spotify not detected yet — if you completed auth, try closing the Pathfix tab and waiting a few seconds.', 'info');
+                    }
+                }
+            }, 1500);
+        }
+
+        // ── Client-side Pathfix status check ──────────────────────────────────
+        // Server-side calls to Pathfix are IP-blocked; must be called from browser.
+        async function checkSpotifyViaPathfix() {
+            if (!currentUser?.id) { console.log('[Pathfix] checkSpotifyViaPathfix: no currentUser.id'); return false; }
+            try {
+                const params = new URLSearchParams({
+                    public_key: '901B9B27-BCD0-482F-9F44-7443778A0542',
+                    user_id: String(currentUser.id),
+                    url: 'https://api.spotify.com/v1/me',
+                    method: 'GET'
+                });
+                const url = `https://labs.pathfix.com/oauth/method/spotify/call?${params}`;
+                console.log('[Pathfix] checkSpotifyViaPathfix GET →', url);
+                const res = await fetch(url);
+                const text = await res.text();
+                console.log('[Pathfix] checkSpotifyViaPathfix HTTP', res.status, '→', text.slice(0, 400));
+                let data;
+                try { data = JSON.parse(text); } catch { return false; }
+                if (!res.ok || (data.rows && data.rows[0]?.pincStatus === 'error')) {
+                    console.log('[Pathfix] Pathfix error:', data.rows?.[0]?.errorType, data.rows?.[0]?.errorMessage);
+                    return false;
+                }
+                const connected = !!(data.id || data.display_name);
+                console.log('[Pathfix] Spotify profile:', data.display_name, '| connected:', connected);
+                return connected;
+            } catch (e) { console.error('[Pathfix] checkSpotifyViaPathfix error:', e); return false; }
+        }
+
+        async function loadSpotifyStatus() {
+            const container = document.querySelector('.spotify-connect');
+            if (!container) return;
+
+            // 1. Try Pathfix JS SDK first (if loaded)
+            if (typeof $pinc !== 'undefined' && $pinc.oauth) {
+                $pinc.oauth.getState('spotify', (res) => {
+                    spotifyConnected = res && res.connected;
+                    if (spotifyConnected) renderSpotifyConnected(container);
+                });
+                return;
+            }
+
+            // 2. Call Pathfix proxy directly from the browser (server is IP-blocked)
+            const connected = await checkSpotifyViaPathfix();
+            spotifyConnected = connected;
+            if (connected) renderSpotifyConnected(container);
+        }
+
+        function renderSpotifyConnected(container) {
+            if (!container) return;
+            container.innerHTML = `
+                <div class="spotify-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
+                    </svg>
+                </div>
+                <div class="spotify-info">
+                    <div class="spotify-title" style="color:var(--spotify-green);">✓ Spotify Connected</div>
+                    <div class="spotify-text">Your streaming is being tracked. Sync to earn points!</div>
+                </div>
+                <button class="spotify-btn" data-action="syncSpotify">Sync Now</button>
+            `;
+        }
+
+        async function loadStreamingStats() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/spotify/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+                const stats = await res.json();
+                document.getElementById('minutesStreamed').textContent = (stats.mavinMinutes || 0).toLocaleString();
+            } catch (e) { console.error('Streaming stats error:', e); }
+        }
+
+        async function loadUserStats() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/user/stats', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) return;
+                const stats = await res.json();
+                document.getElementById('monthPoints').textContent = (stats.monthlyPoints || 0).toLocaleString();
+                document.getElementById('referralCount').textContent = stats.referralCount || 0;
+                document.getElementById('giftCount').textContent = stats.giftCardCount || 0;
+            } catch (e) { console.error('User stats error:', e); }
+        }
+
+        async function loadTaskProgress() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/tasks/contribution', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) return;
+                const data = await res.json();
+                const tier = (data.current_tier || 'fan').replace('_', ' ').toUpperCase();
+                const badge = document.getElementById('fanTierBadge');
+                badge.textContent = tier;
+                const sub = document.getElementById('taskWidgetSub');
+                const score = data.total_score || 0;
+                const completed = data.tasks_completed || 0;
+                sub.textContent = `${score.toLocaleString()} pts · ${completed} tasks completed`;
+            } catch (e) { /* Tasks module may not be initialized yet */ }
+        }
+
+        async function loadActivity() {
+            const token = localStorage.getItem('authToken');
+            const container = document.getElementById('activityList');
+            try {
+                const res = await fetch('/api/loyalty/history', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) {
+                    container.innerHTML = '<div class="empty-state">No activity yet — earn your first points!</div>';
+                    return;
+                }
+                const history = await res.json();
+                if (!history || history.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No activity yet. Connect Spotify or complete a <a href="/tasks" style="color:var(--mavin-gold)">task</a> to start earning!</div>';
+                    return;
+                }
+                container.innerHTML = history.slice(0, 8).map(item => {
+                    const isPositive = item.amount > 0;
+                    // Use description → type → reference_id for display title
+                    const title = item.description || item.type || item.reference_id || 'Points transaction';
+                    return `
+                    <div class="activity-item">
+                        <div class="activity-icon ${isPositive ? 'earn' : 'redeem'}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                ${isPositive
+                            ? '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>'
+                            : '<circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>'}
+                            </svg>
+                        </div>
+                        <div class="activity-details">
+                            <div class="activity-title">${escapeHtml(String(title))}</div>
+                            <div class="activity-time">${formatDate(item.created_at)}</div>
+                        </div>
+                        <div class="activity-points ${isPositive ? 'positive' : 'negative'}">
+                            ${isPositive ? '+' : ''}${item.amount} pts
+                        </div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Activity error:', e);
+                container.innerHTML = '<div class="empty-state">Failed to load activity</div>';
+            }
+        }
+
+        async function applyForCard() {
+            const token = localStorage.getItem('authToken');
+
+            try {
+                const response = await fetch('/api/loyalty/apply', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showNotification('Card approved! Welcome bonus added.', 'success');
+                    loadLoyaltyCard();
+                } else {
+                    showNotification(data.error || 'Application failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Network error', 'error');
+            }
+        }
+
+        async function syncSpotify() {
+            const token = localStorage.getItem('authToken');
+            const btn = document.querySelector('.spotify-btn');
+
+            btn.textContent = 'Syncing...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/api/spotify/sync', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (data.pointsAwarded > 0) {
+                        showNotification(`Synced! +${data.pointsAwarded} points earned`, 'success');
+                        loadLoyaltyCard();
+                    } else {
+                        showNotification('Synced! No new Mavin streams detected.', 'info');
+                    }
+                    loadStreamingStats();
+                    loadActivity();
+                } else {
+                    showNotification(data.error || 'Sync failed', 'error');
+                }
+            } catch (error) {
+                showNotification('Sync failed', 'error');
+            } finally {
+                btn.textContent = 'Sync Now';
+                btn.disabled = false;
+            }
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = now - date;
+            if (diff < 60000) return 'Just now';
+            if (diff < 3600000) return Math.floor(diff / 60000) + ' min ago';
+            if (diff < 86400000) return Math.floor(diff / 3600000) + ' hrs ago';
+            return date.toLocaleDateString();
+        }
+
+        function escapeHtml(str) {
+            return str ? str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : '';
+        }
+
+        function showNotification(message, type = 'info') {
+            const bg = { success: '#0d2818', error: '#2a0d0d', info: '#1a1200' };
+            const border = { success: 'rgba(16,185,129,0.4)', error: 'rgba(239,68,68,0.4)', info: 'rgba(162,129,46,0.4)' };
+            const icon = { success: '✓', error: '✕', info: 'ℹ' };
+            const iconColor = { success: '#10b981', error: '#ef4444', info: '#A2812E' };
+
+            const n = document.createElement('div');
+            n.style.cssText = `
+                position: fixed; bottom: 32px; right: 32px;
+                padding: 16px 20px; background: ${bg[type]};
+                border: 1px solid ${border[type]}; border-radius: 12px;
+                color: #fff; font-size: 0.875rem; font-weight: 500;
+                z-index: 9999; display: flex; align-items: center; gap: 10px;
+                max-width: 360px; animation: slideUp 0.3s ease;
+                font-family: var(--font-main);
+            `;
+            n.innerHTML = `<span style="color:${iconColor[type]};font-weight:700;">${icon[type]}</span> ${escapeHtml(message)}`;
+            document.body.appendChild(n);
+            setTimeout(() => { n.style.opacity = '0'; n.style.transition = 'opacity 0.3s'; setTimeout(() => n.remove(), 300); }, 4000);
+        }
+
+        function logout() {
+            const token = localStorage.getItem('authToken');
+            fetch('/api/user/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).finally(() => {
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('user');
+                window.location.href = '/login';
+            });
+        }
+
+        // ── Delegated click handler (replaces all inline onclick= attributes) ──
+        // This is required because CSP blocks onclick= in dynamically-injected HTML.
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            const action = btn.dataset.action;
+            switch (action) {
+                case 'applyForCard': applyForCard(); break;
+                case 'connectSpotify': connectSpotify(); break;
+                case 'syncSpotify': syncSpotify(); break;
+                case 'logout': logout(); break;
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Mavin SuperFan Rewards Shop - Redeem your points for exclusive rewards">
+    <title>Rewards Shop | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111;
+            --bg-elevated: #1a1a1a;
+            --text-white: #fff;
+            --text-gray: #888;
+            --text-muted: #555;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: var(--bg-black);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.6875rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .sidebar-footer {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .main {
+            margin-left: 240px;
+            padding: 48px;
+            min-height: 100vh;
+        }
+
+        .page-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+        }
+
+        /* Points Balance Bar */
+        .balance-bar {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px 28px;
+            margin-bottom: 32px;
+        }
+
+        .balance-label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .balance-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+        }
+
+        .balance-suffix {
+            font-size: 0.875rem;
+            color: var(--text-gray);
+            margin-left: 4px;
+        }
+
+        .balance-tier {
+            margin-left: auto;
+        }
+
+        .tier-badge {
+            display: inline-flex;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .tier-fan {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+        }
+
+        .tier-superfan {
+            background: rgba(162, 129, 46, 0.2);
+            color: var(--mavin-gold);
+        }
+
+        .tier-elite {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+        }
+
+        .tier-inner_circle {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        /* Category Filters */
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s;
+            border-radius: 20px;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--text-gray);
+            color: var(--text-white);
+        }
+
+        .filter-btn.active {
+            background: var(--mavin-gold);
+            border-color: var(--mavin-gold);
+            color: var(--bg-black);
+        }
+
+        /* Reward Grid */
+        .reward-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+        }
+
+        .reward-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .reward-card:hover {
+            border-color: rgba(162, 129, 46, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .reward-card.locked {
+            opacity: 0.5;
+        }
+
+        .reward-image {
+            height: 140px;
+            background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(162, 129, 46, 0.1) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            position: relative;
+        }
+
+        .reward-image .category-icon {
+            opacity: 0.5;
+        }
+
+        .reward-stock {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 4px 10px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 12px;
+            font-size: 0.625rem;
+            font-weight: 600;
+            color: var(--text-gray);
+            letter-spacing: 0.05em;
+        }
+
+        .reward-stock.low {
+            color: var(--warning);
+        }
+
+        .reward-stock.out {
+            color: var(--error);
+        }
+
+        .reward-body {
+            padding: 20px;
+        }
+
+        .reward-category {
+            font-size: 0.625rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .reward-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .reward-desc {
+            font-size: 0.8125rem;
+            color: var(--text-gray);
+            margin-bottom: 16px;
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .reward-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .reward-cost {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+        }
+
+        .reward-cost-label {
+            font-size: 0.6875rem;
+            color: var(--text-muted);
+        }
+
+        .reward-tier-req {
+            font-size: 0.625rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .redeem-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .redeem-btn:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        .redeem-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-gray);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            padding: 16px 24px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-size: 0.875rem;
+            z-index: 9999;
+            animation: slideUp 0.3s ease;
+            max-width: 360px;
+        }
+
+        .toast.success {
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .toast.error {
+            border-color: rgba(239, 68, 68, 0.4);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Confirm Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .modal-desc {
+            font-size: 0.875rem;
+            color: var(--text-gray);
+            margin-bottom: 24px;
+        }
+
+        .modal-cost {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font-main);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .modal-btn.primary {
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+        }
+
+        .modal-btn.secondary {
+            background: var(--bg-elevated);
+            color: var(--text-gray);
+        }
+
+        .mobile-header {
+            display: none;
+            padding: 16px 20px;
+            background: var(--bg-black);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        @media (max-width:900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px 16px;
+            }
+
+            .reward-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .balance-bar {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mobile-header">
+        <span style="font-weight:700;color:var(--mavin-gold);letter-spacing:0.1em;">MAVIN</span>
+        <a href="/tasks" style="color:var(--text-gray);text-decoration:none;font-size:0.75rem;">← Tasks</a>
+    </div>
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">MAVIN</div>
+        <div class="sidebar-subtitle">SuperFan Hub</div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>Dashboard</a></li>
+            <li><a href="/tasks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>Tasks & Rewards</a></li>
+            <li><a href="/leaderboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>Leaderboard</a></li>
+            <li><a href="/rewards" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>Rewards Shop</a></li>
+            <li><a href="/squads"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>Squads</a></li>
+            <li><a href="/gift-cards"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>Gift Cards</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div>
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-email" id="userEmail">...</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Sign Out</button>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="page-label">Redeem Your Points</div>
+        <h1 class="page-title">Rewards Shop</h1>
+
+        <div class="balance-bar">
+            <div>
+                <div class="balance-label">Your Balance</div>
+                <div><span class="balance-value" id="pointsBalance">0</span><span class="balance-suffix">pts</span>
+                </div>
+            </div>
+            <div class="balance-tier">
+                <span class="tier-badge tier-fan" id="userTier">FAN</span>
+            </div>
+        </div>
+
+        <div class="filters">
+            <button class="filter-btn active" data-cat="all">All</button>
+            <button class="filter-btn" data-cat="merch">Merch</button>
+            <button class="filter-btn" data-cat="experience">Experiences</button>
+            <button class="filter-btn" data-cat="digital">Digital</button>
+            <button class="filter-btn" data-cat="exclusive">Exclusive</button>
+        </div>
+
+        <div class="reward-grid" id="rewardGrid">
+            <div class="empty-state">Loading rewards...</div>
+        </div>
+    </main>
+
+    <div class="modal-overlay" id="redeemModal">
+        <div class="modal">
+            <h3 class="modal-title" id="redeemTitle">Confirm Redemption</h3>
+            <p class="modal-desc" id="redeemDesc"></p>
+            <div class="modal-cost" id="redeemCost">0 pts</div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" onclick="closeRedeemModal()">Cancel</button>
+                <button class="modal-btn primary" onclick="confirmRedeem()">Redeem Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null, rewards = [], userPoints = 0, userTier = 'fan', activeCategory = 'all', redeemRewardId = null;
+        const TIER_ORDER = ['fan', 'superfan', 'elite', 'inner_circle'];
+        const CATEGORY_ICONS = { merch: '👕', experience: '🎤', digital: '🎵', exclusive: '💎', general: '🎁' };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('authToken');
+            if (!token) { window.location.href = '/login'; return; }
+            try {
+                const res = await fetch('/api/user/session', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (!data.authenticated) { window.location.href = '/login'; return; }
+                currentUser = data.user;
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userEmail').textContent = currentUser.email;
+                document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+                await Promise.all([loadBalance(), loadRewards()]);
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        activeCategory = btn.dataset.cat;
+                        renderRewards();
+                    });
+                });
+            } catch (e) { window.location.href = '/login'; }
+        });
+
+        async function loadBalance() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const [cardRes, contribRes] = await Promise.all([
+                    fetch('/api/loyalty/card', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('/api/tasks/contribution', { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (cardRes.ok) { const card = await cardRes.json(); userPoints = card.points || 0; }
+                if (contribRes.ok) { const c = await contribRes.json(); userTier = c.current_tier || 'fan'; }
+                document.getElementById('pointsBalance').textContent = userPoints.toLocaleString();
+                const badge = document.getElementById('userTier');
+                badge.textContent = userTier.replace('_', ' ').toUpperCase();
+                badge.className = `tier-badge tier-${userTier}`;
+            } catch (e) { }
+        }
+
+        async function loadRewards() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/rewards', { headers: { 'Authorization': `Bearer ${token}` } });
+                rewards = await res.json();
+                renderRewards();
+            } catch (e) {
+                document.getElementById('rewardGrid').innerHTML = '<div class="empty-state">Failed to load rewards</div>';
+            }
+        }
+
+        function renderRewards() {
+            const grid = document.getElementById('rewardGrid');
+            let filtered = activeCategory === 'all' ? rewards : rewards.filter(r => r.category === activeCategory);
+            if (!filtered.length) {
+                grid.innerHTML = '<div class="empty-state">No rewards available in this category</div>';
+                return;
+            }
+            const tierIdx = TIER_ORDER.indexOf(userTier);
+            grid.innerHTML = filtered.map(r => {
+                const reqIdx = TIER_ORDER.indexOf(r.tier_required || 'fan');
+                const locked = tierIdx < reqIdx;
+                const affordable = userPoints >= r.points_cost;
+                const outOfStock = r.inventory === 0;
+                const lowStock = r.inventory > 0 && r.inventory <= 5;
+                const icon = CATEGORY_ICONS[r.category] || '🎁';
+                let stockHtml = '';
+                if (outOfStock) stockHtml = '<span class="reward-stock out">OUT OF STOCK</span>';
+                else if (lowStock) stockHtml = `<span class="reward-stock low">${r.inventory} LEFT</span>`;
+                else if (r.inventory > 0) stockHtml = `<span class="reward-stock">${r.inventory} LEFT</span>`;
+
+                return `<div class="reward-card ${locked ? 'locked' : ''}">
+                    <div class="reward-image"><span class="category-icon">${icon}</span>${stockHtml}</div>
+                    <div class="reward-body">
+                        <div class="reward-category">${r.category || 'general'}</div>
+                        <h3 class="reward-title">${escapeHtml(r.title)}</h3>
+                        <p class="reward-desc">${escapeHtml(r.description)}</p>
+                        <div class="reward-footer">
+                            <div>
+                                <div class="reward-cost">${r.points_cost.toLocaleString()} <span class="reward-cost-label">pts</span></div>
+                                ${locked ? `<div class="reward-tier-req">Requires ${(r.tier_required || 'fan').replace('_', ' ')}</div>` : ''}
+                            </div>
+                            <button class="redeem-btn" ${locked || !affordable || outOfStock ? 'disabled' : ''} onclick="openRedeemModal(${r.id}, '${escapeHtml(r.title)}', ${r.points_cost})">
+                                ${locked ? 'Locked' : outOfStock ? 'Sold Out' : !affordable ? 'Need More' : 'Redeem'}
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function openRedeemModal(id, title, cost) {
+            redeemRewardId = id;
+            document.getElementById('redeemTitle').textContent = `Redeem: ${title}`;
+            document.getElementById('redeemDesc').textContent = `This will deduct points from your balance.`;
+            document.getElementById('redeemCost').textContent = `${cost.toLocaleString()} pts`;
+            document.getElementById('redeemModal').classList.add('active');
+        }
+        function closeRedeemModal() { document.getElementById('redeemModal').classList.remove('active'); redeemRewardId = null; }
+
+        async function confirmRedeem() {
+            if (!redeemRewardId) return;
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch(`/api/rewards/${redeemRewardId}/redeem`, {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                closeRedeemModal();
+                if (res.ok) {
+                    showToast(`Redeemed! -${data.pointsSpent} pts`, 'success');
+                    await Promise.all([loadBalance(), loadRewards()]);
+                } else { showToast(data.error || 'Redemption failed', 'error'); }
+            } catch (e) { showToast('Network error', 'error'); }
+        }
+
+        function escapeHtml(s) { return s ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') : ''; }
+        function showToast(msg, type = 'success') {
+            const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
+            document.body.appendChild(t); setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+        }
+        function logout() { localStorage.removeItem('authToken'); window.location.href = '/login'; }
+    </script>
+</body>
+
+</html>

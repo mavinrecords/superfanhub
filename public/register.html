@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Join the Mavin SuperFan Hub community">
+    <title>Join | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000000;
+            --bg-dark: #0a0a0a;
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --error: #ef4444;
+            --success: #10b981;
+            --spotify-green: #1ed760;
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            padding: 24px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            text-decoration: none;
+        }
+
+        .header-link {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            transition: color 0.2s ease;
+        }
+
+        .header-link:hover {
+            color: var(--text-white);
+        }
+
+        .main {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 24px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .auth-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .auth-subtitle {
+            color: var(--text-gray);
+            font-size: 0.9375rem;
+            margin-bottom: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--text-gray);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 16px;
+            background: var(--bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-white);
+            font-family: var(--font-main);
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.05);
+        }
+
+        .form-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .form-hint {
+            font-size: 0.75rem;
+            color: var(--text-gray);
+            margin-top: 6px;
+        }
+
+        .terms-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 0.875rem;
+            color: var(--text-gray);
+            cursor: pointer;
+            margin-bottom: 24px;
+            line-height: 1.4;
+        }
+
+        .terms-label input {
+            margin-top: 3px;
+            accent-color: var(--mavin-gold);
+        }
+
+        .terms-label a {
+            color: var(--mavin-gold);
+            text-decoration: none;
+        }
+
+        .terms-label a:hover {
+            text-decoration: underline;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--mavin-gold);
+            border: none;
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin: 32px 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .divider span {
+            font-size: 0.75rem;
+            color: var(--text-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .spotify-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--spotify-green);
+            border: none;
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .spotify-btn:hover {
+            background: #1db954;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--error);
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        .success-message {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success);
+            padding: 12px 16px;
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .success-message.visible {
+            display: block;
+        }
+
+        .auth-footer {
+            text-align: center;
+            margin-top: 32px;
+            font-size: 0.9375rem;
+            color: var(--text-gray);
+        }
+
+        .auth-footer a {
+            color: var(--mavin-gold);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .auth-footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 600px) {
+            .header {
+                padding: 16px 24px;
+            }
+
+            .auth-title {
+                font-size: 1.75rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <a href="/" class="header-logo">MAVIN</a>
+        <a href="/login" class="header-link">Sign In</a>
+    </header>
+
+    <main class="main">
+        <div class="auth-container">
+            <h1 class="auth-title">Join SuperFan Hub</h1>
+            <p class="auth-subtitle">Create your account and start earning rewards</p>
+
+            <div id="errorMessage" class="error-message"></div>
+            <div id="successMessage" class="success-message"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label class="form-label" for="name">Full Name</label>
+                    <input type="text" class="form-input" id="name" placeholder="Your name" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="email">Email</label>
+                    <input type="email" class="form-input" id="email" placeholder="your@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="phone">Phone <span style="font-weight:400">(optional)</span></label>
+                    <input type="tel" class="form-input" id="phone" placeholder="+234 xxx xxx xxxx">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="password">Password</label>
+                    <input type="password" class="form-input" id="password" placeholder="Create a password" required>
+                    <div class="form-hint">At least 8 characters</div>
+                </div>
+
+                <label class="terms-label">
+                    <input type="checkbox" id="terms" required>
+                    <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a></span>
+                </label>
+
+                <button type="submit" class="submit-btn" id="submitBtn">Create Account</button>
+            </form>
+
+            <div class="divider"><span>or</span></div>
+
+            <button class="spotify-btn" onclick="connectSpotify()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path
+                        d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z" />
+                </svg>
+                Sign up with Spotify
+            </button>
+
+            <div class="auth-footer">
+                Already have an account? <a href="/login">Sign in</a>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function showError(message) {
+            document.getElementById('successMessage').classList.remove('visible');
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('visible');
+        }
+
+        function showSuccess(message) {
+            document.getElementById('errorMessage').classList.remove('visible');
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.add('visible');
+        }
+
+        function connectSpotify() {
+            alert('Spotify integration coming soon!');
+        }
+
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+            const terms = document.getElementById('terms').checked;
+
+            if (!name || !email || !password) {
+                showError('Please fill in all required fields.');
+                return;
+            }
+
+            if (password.length < 8) {
+                showError('Password must be at least 8 characters.');
+                return;
+            }
+
+            if (!terms) {
+                showError('Please accept the terms to continue.');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                const response = await fetch('/api/user/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, phone, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Registration failed');
+                }
+
+                showSuccess('Account created! Redirecting to login...');
+                
+                setTimeout(() => {
+                    window.location.href = '/login';
+                }, 1500);
+
+            } catch (error) {
+                showError(error.message);
+                btn.disabled = false;
+                btn.textContent = 'Create Account';
+            }
+        });
+    </script>
+</body>
+
+</html>

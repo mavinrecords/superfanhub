@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Mavin SuperFan Leaderboard - See top fans and your ranking">
+    <title>Leaderboard | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111;
+            --bg-elevated: #1a1a1a;
+            --text-white: #fff;
+            --text-gray: #888;
+            --text-muted: #555;
+            --success: #10b981;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: var(--bg-black);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.6875rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-radius: 8px;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .sidebar-footer {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        .main {
+            margin-left: 240px;
+            padding: 48px;
+            min-height: 100vh;
+            max-width: 900px;
+        }
+
+        .page-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 40px;
+        }
+
+        /* My Rank Card */
+        .my-rank-card {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            background: linear-gradient(135deg, var(--bg-card) 0%, rgba(162, 129, 46, 0.08) 100%);
+            border: 1px solid rgba(162, 129, 46, 0.3);
+            border-radius: 12px;
+            padding: 24px 32px;
+            margin-bottom: 40px;
+        }
+
+        .my-rank-number {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+            line-height: 1;
+            min-width: 80px;
+        }
+
+        .my-rank-info {
+            flex: 1;
+        }
+
+        .my-rank-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .my-rank-stats {
+            font-size: 0.8125rem;
+            color: var(--text-gray);
+        }
+
+        .tier-badge {
+            display: inline-flex;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.6875rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .tier-fan {
+            background: rgba(100, 116, 139, 0.2);
+            color: #94a3b8;
+        }
+
+        .tier-superfan {
+            background: rgba(162, 129, 46, 0.2);
+            color: var(--mavin-gold);
+        }
+
+        .tier-elite {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+        }
+
+        .tier-inner_circle {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+        }
+
+        /* Leaderboard Table */
+        .lb-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .lb-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 120px 100px 80px;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s;
+        }
+
+        .lb-row:hover {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .lb-row.header {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .lb-row.top-3 {
+            background: rgba(162, 129, 46, 0.04);
+        }
+
+        .lb-rank {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .lb-rank.gold {
+            color: #fbbf24;
+        }
+
+        .lb-rank.silver {
+            color: #c0c0c0;
+        }
+
+        .lb-rank.bronze {
+            color: #cd7f32;
+        }
+
+        .lb-user {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .lb-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.75rem;
+        }
+
+        .lb-name {
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .lb-score {
+            font-weight: 700;
+            font-size: 0.9375rem;
+            color: var(--mavin-gold);
+        }
+
+        .lb-tasks {
+            font-size: 0.8125rem;
+            color: var(--text-gray);
+        }
+
+        .lb-streak {
+            font-size: 0.8125rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px;
+            color: var(--text-gray);
+        }
+
+        .mobile-header {
+            display: none;
+            padding: 16px 20px;
+            background: var(--bg-black);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        @media (max-width:900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .mobile-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px 16px;
+            }
+
+            .lb-row {
+                grid-template-columns: 40px 1fr 80px 60px;
+            }
+
+            .lb-row .lb-tasks,
+            .lb-row.header .lb-tasks {
+                display: none;
+            }
+
+            .my-rank-card {
+                flex-wrap: wrap;
+                padding: 20px;
+                gap: 16px;
+            }
+
+            .my-rank-number {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="mobile-header">
+        <span style="font-weight:700;color:var(--mavin-gold);letter-spacing:0.1em;">MAVIN</span>
+        <a href="/tasks" style="color:var(--text-gray);text-decoration:none;font-size:0.75rem;">← Tasks</a>
+    </div>
+
+    <aside class="sidebar">
+        <div class="sidebar-logo">MAVIN</div>
+        <div class="sidebar-subtitle">SuperFan Hub</div>
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>Dashboard</a></li>
+            <li><a href="/tasks"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M9 11l3 3L22 4"></path>
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+                    </svg>Tasks & Rewards</a></li>
+            <li><a href="/leaderboard" class="active"><svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>Leaderboard</a></li>
+            <li><a href="/rewards"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>Rewards Shop</a></li>
+            <li><a href="/squads"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>Squads</a></li>
+            <li><a href="/gift-cards"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>Gift Cards</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div>
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-email" id="userEmail">...</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Sign Out</button>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="page-label">Community Rankings</div>
+        <h1 class="page-title">Leaderboard</h1>
+
+        <div class="my-rank-card" id="myRankCard" style="display:none;">
+            <div class="my-rank-number" id="myRankNum">#-</div>
+            <div class="my-rank-info">
+                <div class="my-rank-name" id="myRankName">You</div>
+                <div class="my-rank-stats" id="myRankStats">-</div>
+            </div>
+            <span class="tier-badge tier-fan" id="myRankTier">FAN</span>
+        </div>
+
+        <div id="leaderboardContainer">
+            <div class="lb-row header">
+                <div>Rank</div>
+                <div>Fan</div>
+                <div>Score</div>
+                <div class="lb-tasks">Tasks</div>
+                <div>Streak</div>
+            </div>
+            <div id="lbRows">
+                <div class="empty-state">Loading leaderboard...</div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('authToken');
+            if (!token) { window.location.href = '/login'; return; }
+            try {
+                const res = await fetch('/api/user/session', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (!data.authenticated) { window.location.href = '/login'; return; }
+                currentUser = data.user;
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userEmail').textContent = currentUser.email;
+                document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+                loadLeaderboard();
+            } catch (e) { window.location.href = '/login'; }
+        });
+
+        async function loadLeaderboard() {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/leaderboard', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                const container = document.getElementById('lbRows');
+
+                if (data.myRank) {
+                    const card = document.getElementById('myRankCard');
+                    card.style.display = 'flex';
+                    document.getElementById('myRankNum').textContent = `#${data.myRank.rank}`;
+                    document.getElementById('myRankName').textContent = data.myRank.user_name || currentUser.name;
+                    document.getElementById('myRankStats').textContent = `${data.myRank.score || 0} pts · ${data.myRank.tasks_completed || 0} tasks`;
+                    const tier = data.myRank.current_tier || 'fan';
+                    const badge = document.getElementById('myRankTier');
+                    badge.textContent = tier.replace('_', ' ').toUpperCase();
+                    badge.className = `tier-badge tier-${tier}`;
+                }
+
+                if (!data.leaderboard || data.leaderboard.length === 0) {
+                    container.innerHTML = '<div class="empty-state">No rankings yet. Complete tasks to appear on the leaderboard!</div>';
+                    return;
+                }
+
+                const colors = ['#fbbf24', '#c0c0c0', '#cd7f32'];
+                const avatarColors = ['rgba(251,191,36,0.2)', 'rgba(192,192,192,0.2)', 'rgba(205,127,50,0.2)'];
+
+                container.innerHTML = data.leaderboard.map((entry, i) => {
+                    const rankClass = i < 3 ? ['gold', 'silver', 'bronze'][i] : '';
+                    const isTop3 = i < 3 ? 'top-3' : '';
+                    const avatarBg = i < 3 ? avatarColors[i] : 'rgba(162,129,46,0.1)';
+                    const avatarColor = i < 3 ? colors[i] : 'var(--text-gray)';
+                    const initial = (entry.user_name || '?').charAt(0).toUpperCase();
+                    const tier = entry.current_tier || 'fan';
+
+                    return `<div class="lb-row ${isTop3}">
+                        <div class="lb-rank ${rankClass}">${entry.rank}</div>
+                        <div class="lb-user">
+                            <div class="lb-avatar" style="background:${avatarBg};color:${avatarColor};">${initial}</div>
+                            <div>
+                                <div class="lb-name">${escapeHtml(entry.user_name || 'Anonymous')}</div>
+                                <span class="tier-badge tier-${tier}" style="font-size:0.5625rem;padding:2px 8px;">${tier.replace('_', ' ')}</span>
+                            </div>
+                        </div>
+                        <div class="lb-score">${(entry.score || 0).toLocaleString()}</div>
+                        <div class="lb-tasks">${entry.tasks_completed || 0}</div>
+                        <div class="lb-streak">${entry.streak ? `🔥 ${entry.streak}` : '-'}</div>
+                    </div>`;
+                }).join('');
+            } catch (e) {
+                console.error('Leaderboard error:', e);
+                document.getElementById('lbRows').innerHTML = '<div class="empty-state">Failed to load leaderboard</div>';
+            }
+        }
+
+        function escapeHtml(s) { return s ? s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') : ''; }
+        function logout() { localStorage.removeItem('authToken'); window.location.href = '/login'; }
+    </script>
+</body>
+
+</html>

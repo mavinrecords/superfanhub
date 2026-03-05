@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Participate in campaigns to earn points">
+    <title>Campaigns | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000000;
+            --bg-dark: #0a0a0a;
+            --bg-card: #111111;
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --text-muted: #555555;
+            --success: #10b981;
+            --spotify-green: #1ed760;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+        }
+
+        /* Sidebar (Duplicate of Dashboard) */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 240px;
+            background: var(--bg-black);
+            border-right: 1px solid var(--border-color);
+            padding: 32px 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.6875rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+        }
+
+        .sidebar-nav {
+            list-style: none;
+            flex: 1;
+        }
+
+        .sidebar-nav li {
+            margin-bottom: 8px;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .sidebar-nav a:hover {
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-nav a.active {
+            color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .sidebar-footer {
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .user-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .user-email {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .logout-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-gray);
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .logout-btn:hover {
+            border-color: var(--text-gray);
+            color: var(--text-white);
+        }
+
+        /* Main Content */
+        .main {
+            margin-left: 240px;
+            padding: 48px;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            margin-bottom: 48px;
+        }
+
+        .page-greeting {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .page-title {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        /* Campaign Grid */
+        .campaign-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+        }
+
+        .campaign-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 0;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .campaign-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--mavin-gold);
+        }
+
+        .campaign-image {
+            height: 160px;
+            background: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .campaign-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .campaign-content {
+            padding: 24px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .campaign-type {
+            font-size: 0.6875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--mavin-gold);
+            margin-bottom: 8px;
+        }
+
+        .campaign-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            line-height: 1.3;
+        }
+
+        .campaign-desc {
+            font-size: 0.875rem;
+            color: var(--text-gray);
+            margin-bottom: 24px;
+            line-height: 1.5;
+            flex: 1;
+        }
+
+        .campaign-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .campaign-points {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--text-white);
+        }
+
+        .points-badge {
+            background: rgba(162, 129, 46, 0.1);
+            color: var(--mavin-gold);
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .campaign-btn {
+            background: transparent;
+            border: 1px solid var(--text-gray);
+            color: var(--text-white);
+            padding: 8px 16px;
+            font-family: var(--font-main);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .campaign-btn:hover {
+            border-color: var(--mavin-gold);
+            color: var(--mavin-gold);
+        }
+
+        .campaign-btn.primary {
+            background: var(--mavin-gold);
+            border-color: var(--mavin-gold);
+            color: var(--bg-black);
+            font-weight: 600;
+        }
+
+        .campaign-btn.primary:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        .campaign-btn.completed {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--success);
+            color: var(--success);
+            cursor: default;
+        }
+
+        /* Mobile */
+        @media (max-width: 900px) {
+            .sidebar {
+                display: none;
+            }
+
+            .main {
+                margin-left: 0;
+                padding: 24px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-logo">MAVIN</div>
+        <div class="sidebar-subtitle">SuperFan Hub</div>
+
+        <ul class="sidebar-nav">
+            <li><a href="/dashboard">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    Dashboard</a></li>
+            <li><a href="/campaigns" class="active">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon
+                            points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                        </polygon>
+                    </svg>
+                    Campaigns</a></li>
+            <li><a href="/gift-cards">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
+                        <line x1="1" y1="10" x2="23" y2="10"></line>
+                    </svg>
+                    Gift Cards</a></li>
+            <li><a href="#">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Referrals</a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar" id="userAvatar">?</div>
+                <div>
+                    <div class="user-name" id="userName">Loading...</div>
+                    <div class="user-email" id="userEmail">...</div>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main">
+        <header class="page-header">
+            <div class="page-greeting">Earn Points</div>
+            <h1 class="page-title">Active Campaigns</h1>
+        </header>
+
+        <div id="campaignsContainer" class="campaign-grid">
+            <!-- Campaigns will be loaded here -->
+            <div style="color: var(--text-gray);">Loading active campaigns...</div>
+        </div>
+    </main>
+
+    <script>
+        let currentUser = null;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const token = localStorage.getItem('authToken');
+
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+
+            try {
+                // validate session
+                const response = await fetch('/api/user/session', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                if (!data.authenticated) {
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                currentUser = data.user;
+                initPage();
+            } catch (error) {
+                console.error('Session error:', error);
+                window.location.href = '/login';
+            }
+        });
+
+        function initPage() {
+            // User info
+            document.getElementById('userName').textContent = currentUser.name;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userAvatar').textContent = currentUser.name.charAt(0).toUpperCase();
+
+            loadCampaigns();
+        }
+
+        async function loadCampaigns() {
+            const container = document.getElementById('campaignsContainer');
+            const token = localStorage.getItem('authToken');
+
+            try {
+                // We use /my to get campaigns with user status
+                const response = await fetch('/api/campaigns/my', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                const campaigns = await response.json();
+
+                if (campaigns.length === 0) {
+                    container.innerHTML = `
+                        <div style="grid-column: 1/-1; text-align: center; padding: 60px; color: var(--text-gray); border: 1px dashed var(--border-color);">
+                            <h3>No Active Campaigns</h3>
+                            <p>Check back later for new challenges!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = campaigns.map(c => renderCampaignCard(c)).join('');
+
+            } catch (error) {
+                console.error('Failed to load campaigns:', error);
+                container.innerHTML = `<div style="color: #ef4444;">Failed to load campaigns. Please refresh.</div>`;
+            }
+        }
+
+        function renderCampaignCard(campaign) {
+            let actionBtn = '';
+
+            if (campaign.user_status === 'completed') {
+                actionBtn = `<button class="campaign-btn completed" disabled>Completed</button>`;
+            } else if (campaign.user_status === 'started') {
+                actionBtn = `<button class="campaign-btn primary" onclick="completeCampaign(${campaign.id})">Complete</button>`;
+            } else {
+                // Not joined yet
+                actionBtn = `<button class="campaign-btn" onclick="joinCampaign(${campaign.id})">Start</button>`;
+            }
+
+            return `
+                <div class="campaign-card">
+                    <div class="campaign-image">
+                        ${campaign.image_url
+                    ? `<img src="${campaign.image_url}" alt="${campaign.title}">`
+                    : `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                               </svg>` }
+                    </div>
+                    <div class="campaign-content">
+                        <div class="campaign-type">${campaign.type}</div>
+                        <h3 class="campaign-title">${campaign.title}</h3>
+                        <p class="campaign-desc">${campaign.description || 'Complete this challenge to earn points.'}</p>
+                        
+                        <div class="campaign-footer">
+                            <span class="points-badge">+${campaign.points} PTS</span>
+                            ${actionBtn}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function joinCampaign(id) {
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch(`/api/campaigns/${id}/join`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (res.ok) {
+                    loadCampaigns(); // Refresh to show "Complete" button
+                } else {
+                    alert('Failed to join campaign');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error joining campaign');
+            }
+        }
+
+        async function completeCampaign(id) {
+            const token = localStorage.getItem('authToken');
+
+            // For MVP, if it's external link, we might open it first?
+            // For now, assume "Complete" implies "I have done it, claim points"
+
+            try {
+                const res = await fetch(`/api/campaigns/${id}/complete`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ proof: 'manual_claim' })
+                });
+
+                if (res.ok) {
+                    const result = await res.json();
+                    alert(`Congratulations! You earned ${result.points} points.`);
+                    loadCampaigns();
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Failed to complete campaign');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error completing campaign');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = '/login';
+        }
+    </script>
+</body>
+
+</html>

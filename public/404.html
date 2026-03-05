@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Not Found | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000000;
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+
+        .error-code {
+            font-size: 8rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+            line-height: 1;
+            margin-bottom: 16px;
+            letter-spacing: -0.05em;
+        }
+
+        .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .error-message {
+            color: var(--text-gray);
+            font-size: 1rem;
+            max-width: 400px;
+            margin-bottom: 32px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 14px 28px;
+            font-family: var(--font-main);
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-gold {
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+            border: none;
+        }
+
+        .btn-gold:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-white);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-white);
+        }
+
+        .logo {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--mavin-gold);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <a href="/" class="logo">MAVIN</a>
+
+    <div class="error-code">404</div>
+    <h1 class="error-title">Page Not Found</h1>
+    <p class="error-message">
+        The page you're looking for doesn't exist or has been moved.
+        Let's get you back on track.
+    </p>
+
+    <div class="actions">
+        <a href="/" class="btn btn-gold">Go Home</a>
+        <a href="/dashboard" class="btn btn-outline">Dashboard</a>
+    </div>
+</body>
+
+</html>

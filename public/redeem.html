@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="description" content="Redeem your Mavin gift card">
+    <title>Redeem Gift Card | Mavin SuperFan Hub</title>
+    <link rel="icon" type="image/png" href="/images/logo.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --mavin-gold: #A2812E;
+            --mavin-gold-light: #c4a03a;
+            --bg-black: #000000;
+            --bg-dark: #0a0a0a;
+            --text-white: #ffffff;
+            --text-gray: #888888;
+            --success: #10b981;
+            --font-main: 'Space Grotesk', -apple-system, sans-serif;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background: var(--bg-black);
+            color: var(--text-white);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            padding: 24px 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .header-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--mavin-gold);
+            text-decoration: none;
+        }
+
+        .header-logo span {
+            color: var(--text-white);
+            font-weight: 400;
+            font-size: 0.75rem;
+            display: block;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 24px;
+        }
+
+        .header-nav a {
+            color: var(--text-gray);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            transition: color 0.2s ease;
+        }
+
+        .header-nav a:hover {
+            color: var(--text-white);
+        }
+
+        /* Main Content */
+        .main {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 80px 24px;
+        }
+
+        .page-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 16px;
+        }
+
+        .page-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 16px;
+        }
+
+        .page-subtitle {
+            color: var(--text-gray);
+            font-size: 1rem;
+            margin-bottom: 48px;
+        }
+
+        /* Code Input */
+        .code-input-wrapper {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .code-input {
+            width: 100%;
+            aspect-ratio: 1;
+            max-height: 80px;
+            background: var(--bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-white);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            text-transform: uppercase;
+            transition: all 0.2s ease;
+        }
+
+        .code-input:focus {
+            outline: none;
+            border-color: var(--mavin-gold);
+            background: rgba(162, 129, 46, 0.1);
+        }
+
+        .code-input::placeholder {
+            color: rgba(255, 255, 255, 0.2);
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 18px;
+            background: var(--mavin-gold);
+            border: none;
+            color: var(--bg-black);
+            font-family: var(--font-main);
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .submit-btn:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Card Display */
+        .card-result {
+            margin-top: 48px;
+            padding: 40px;
+            background: var(--bg-dark);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .card-result.visible {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card-tier {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--mavin-gold);
+            margin-bottom: 24px;
+        }
+
+        .card-balance {
+            font-size: 3.5rem;
+            font-weight: 700;
+            color: var(--success);
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+
+        .card-code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.875rem;
+            color: var(--text-gray);
+            letter-spacing: 0.15em;
+            margin-bottom: 32px;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .card-actions .btn {
+            flex: 1;
+            padding: 14px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-white);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-white);
+        }
+
+        .btn-gold {
+            background: var(--mavin-gold);
+            color: var(--bg-black);
+        }
+
+        .btn-gold:hover {
+            background: var(--mavin-gold-light);
+        }
+
+        /* Error Message */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+            display: none;
+        }
+
+        .error-message.visible {
+            display: block;
+        }
+
+        /* Footer Link */
+        .footer-link {
+            text-align: center;
+            margin-top: 48px;
+            font-size: 0.875rem;
+            color: var(--text-gray);
+        }
+
+        .footer-link a {
+            color: var(--mavin-gold);
+            text-decoration: none;
+        }
+
+        .footer-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            .header {
+                padding: 16px 24px;
+            }
+
+            .main {
+                padding: 48px 24px;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .code-input {
+                font-size: 1.125rem;
+            }
+
+            .card-balance {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <a href="/" class="header-logo">
+            MAVIN
+            <span>SuperFan Hub</span>
+        </a>
+        <nav class="header-nav">
+            <a href="/login">Sign In</a>
+            <a href="/register">Join</a>
+        </nav>
+    </header>
+
+    <main class="main">
+        <div class="page-label">Gift Cards</div>
+        <h1 class="page-title">Redeem Your Card</h1>
+        <p class="page-subtitle">Enter the 16-character code from your Mavin gift card.</p>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="redeemForm">
+            <div class="code-input-wrapper">
+                <input type="text" class="code-input" id="code1" maxlength="4" placeholder="XXXX" autocomplete="off"
+                    autofocus>
+                <input type="text" class="code-input" id="code2" maxlength="4" placeholder="XXXX" autocomplete="off">
+                <input type="text" class="code-input" id="code3" maxlength="4" placeholder="XXXX" autocomplete="off">
+                <input type="text" class="code-input" id="code4" maxlength="4" placeholder="XXXX" autocomplete="off">
+            </div>
+
+            <button type="submit" class="submit-btn" id="submitBtn">Check Balance</button>
+        </form>
+
+        <div id="cardResult" class="card-result">
+            <div class="card-tier" id="cardTier">STANDARD</div>
+            <div class="card-balance" id="cardBalance">$0.00</div>
+            <div class="card-code" id="cardCode">XXXX-XXXX-XXXX-XXXX</div>
+            <div class="card-actions">
+                <button class="btn btn-outline" onclick="resetForm()">Check Another</button>
+                <a href="/login" class="btn btn-gold">Link to Account</a>
+            </div>
+        </div>
+
+        <div class="footer-link">
+            Want to earn rewards? <a href="/register">Create a SuperFan account</a>
+        </div>
+    </main>
+
+    <script>
+        const inputs = [
+            document.getElementById('code1'),
+            document.getElementById('code2'),
+            document.getElementById('code3'),
+            document.getElementById('code4')
+        ];
+
+        // Auto-advance to next input
+        inputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                e.target.value = value;
+
+                if (value.length === 4 && index < 3) {
+                    inputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+                    inputs[index - 1].focus();
+                }
+            });
+
+            // Handle paste
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasted = e.clipboardData.getData('text').toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+                if (pasted.length === 16) {
+                    inputs[0].value = pasted.slice(0, 4);
+                    inputs[1].value = pasted.slice(4, 8);
+                    inputs[2].value = pasted.slice(8, 12);
+                    inputs[3].value = pasted.slice(12, 16);
+                    inputs[3].focus();
+                }
+            });
+        });
+
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('visible');
+        }
+
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('visible');
+        }
+
+        function resetForm() {
+            inputs.forEach(i => i.value = '');
+            inputs[0].focus();
+            document.getElementById('cardResult').classList.remove('visible');
+            hideError();
+        }
+
+        document.getElementById('redeemForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            hideError();
+
+            const code = inputs.map(i => i.value).join('');
+
+            if (code.length !== 16) {
+                showError('Please enter a complete 16-character code.');
+                return;
+            }
+
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+
+            try {
+                const response = await fetch('/api/cards/validate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Invalid card code');
+                }
+
+                // Display card info
+                document.getElementById('cardTier').textContent = data.tier?.toUpperCase() || 'STANDARD';
+                document.getElementById('cardBalance').textContent =
+                    data.type === 'discount'
+                        ? `${data.discountPercent}% OFF`
+                        : `$${data.balance?.toFixed(2) || '0.00'}`;
+                document.getElementById('cardCode').textContent = code.match(/.{4}/g).join('-');
+                document.getElementById('cardResult').classList.add('visible');
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Check Balance';
+            }
+        });
+    </script>
+</body>
+
+</html>

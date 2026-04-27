@@ -4,7 +4,7 @@ const { getDatabase } = require('../db/database');
 // Simple session-based admin authentication
 function requireAdmin(req, res, next) {
     if (!req.session || !req.session.adminId) {
-        return res.status(401).json({ error: 'Authentication required' });
+        return res.status(401).json({ error: 'Authentication required', code: 'AUTH_REQUIRED' });
     }
 
     const db = getDatabase();
@@ -12,7 +12,7 @@ function requireAdmin(req, res, next) {
 
     if (!admin) {
         req.session.destroy();
-        return res.status(401).json({ error: 'Invalid session' });
+        return res.status(401).json({ error: 'Invalid session', code: 'SESSION_INVALID' });
     }
 
     req.admin = admin;

@@ -25,6 +25,19 @@ function paintSkeletonRows(tbodyId, rowCount, colCount) {
     tbody.innerHTML = html;
 }
 
+// =====================================================================
+// H2 — Auth-expiry handler. When any admin fetch returns 401, reload the
+// page; checkSession() runs on DOMContentLoaded and naturally swaps the
+// loginScreen back into view because the server reports not authenticated.
+// Returns true if a 401 was handled — callers must `return` immediately.
+// =====================================================================
+function handleAuthExpired(res) {
+    if (res.status !== 401) return false;
+    alert('Your admin session has expired. Please log in again.');
+    location.reload();
+    return true;
+}
+
 // DOM Elements
 const loginScreen = document.getElementById('loginScreen');
 const adminDashboard = document.getElementById('adminDashboard');
@@ -274,9 +287,12 @@ document.getElementById('createPromoForm')?.addEventListener('submit', async (e)
 
         const response = await fetch('/api/admin/campaigns', { // Keeping endpoint as is for Promos
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        if (handleAuthExpired(response)) return;
 
         const data = await response.json();
 
@@ -365,9 +381,12 @@ document.getElementById('createEngagementForm')?.addEventListener('submit', asyn
     try {
         const res = await fetch('/api/campaigns', {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        if (handleAuthExpired(res)) return;
 
         if (res.ok) {
             showSuccessModal('Campaign Created', 'Engagement campaign is now live');
@@ -417,9 +436,12 @@ document.getElementById('importCsvInput')?.addEventListener('change', async (e) 
             const csvContent = event.target.result;
             const response = await fetch('/api/admin/import/cards', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'text/csv' },
                 body: csvContent // Send raw CSV content
             });
+
+            if (handleAuthExpired(response)) return;
 
             const data = await response.json();
 

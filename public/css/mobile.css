@@ -1,0 +1,969 @@
+/* ============================================================================
+   public/css/mobile.css
+   Mavin SuperFan Hub — Mobile UX & Accessibility primitives
+   Loaded AFTER styles.css on every page. Additive-only; never overrides the
+   color or typography tokens — those live in styles.css. Decisions:
+     - Drawer slides from the RIGHT
+     - Admin drawer kicks in at <= 1023 px (drawer on tablet too)
+     - Responsive tables: card-stack with data-label
+     - --accent-text used opt-in on measured contrast failures only
+
+   M3-8 — Contrast audit (2026-04-27, computed via WCAG 2.1 sRGB formula:
+   L = 0.2126 R_lin + 0.7152 G_lin + 0.0722 B_lin; ratio = (L1+0.05)/(L2+0.05)
+   with R_lin = c <= 0.03928 ? c/12.92 : ((c+0.055)/1.055)^2.4)
+   Targets: AA body = 4.5:1, AA large/UI = 3:1.
+   Tinted surfaces composited via fg*alpha + bg*(1-alpha) over --bg-primary.
+   ----------------------------------------------------------------------------
+     Pair                                                  Ratio   Body  Large/UI
+     ----                                                  -----   ----  --------
+     PURE-DARK SURFACE TEXT
+     --text-primary (#ffffff)   on --bg-primary (#000000)  21.00   PASS    PASS
+     --text-primary (#ffffff)   on --bg-secondary (#0a0a)  19.80   PASS    PASS
+     --text-primary (#ffffff)   on --bg-tertiary (#111111) 18.88   PASS    PASS
+     --text-primary (#ffffff)   on --bg-elevated (#1a1a1a) 17.40   PASS    PASS
+     --text-primary (#ffffff)   on --surface (#0d0d0d)     19.44   PASS    PASS
+     --text-secondary (#adb5bb) on --bg-primary             10.10   PASS    PASS
+     --text-secondary (#adb5bb) on --bg-elevated             8.37   PASS    PASS
+     --text-muted [OLD #666666] on --bg-primary              3.66   FAIL    PASS  <- failed body
+     --text-muted [OLD #666666] on --bg-elevated             3.03   FAIL    PASS  <- failed body
+     --text-muted [NEW #8a8a8a] on --bg-primary              6.08   PASS    PASS  <- M3-8 token bump
+     --text-muted [NEW #8a8a8a] on --bg-tertiary             5.47   PASS    PASS
+     --text-muted [NEW #8a8a8a] on --bg-elevated             5.04   PASS    PASS
+
+     GOLD ACCENT TOKENS
+     --accent (#A2812E)         on --bg-primary              5.72   PASS    PASS
+     --accent (#A2812E)         on --bg-tertiary             5.14   PASS    PASS
+     --accent (#A2812E)         on --bg-elevated             4.74   PASS    PASS  <- tightest
+     --accent-hover (#c4a03a)   on --bg-primary              8.44   PASS    PASS
+     --accent-text (#d0a84a)    on --bg-primary              9.38   PASS    PASS
+     --accent-text (#d0a84a)    on --bg-elevated             7.78   PASS    PASS
+
+     GOLD-FILL BUTTONS (filled bg, dark text)
+     #ffffff text               on --accent (#A2812E)        3.67   FAIL    PASS  <- avoid
+     #000000 text               on --accent (#A2812E)        5.72   PASS    PASS  <- .btn-primary uses this
+
+     RAW SEMANTIC COLORS on --bg-primary (icons, focus rings, large headings)
+     --success (#10b981)        on --bg-primary              8.28   PASS    PASS
+     --error   (#ef4444)        on --bg-primary              5.58   PASS    PASS
+     --warning (#f59e0b)        on --bg-primary              9.78   PASS    PASS
+     --info    (#3b82f6)        on --bg-primary              5.71   PASS    PASS
+
+     SEMANTIC ALIAS TEXT on TINTED ALERT SURFACES (rgba(...,0.10) over #000)
+     M3-8: --accent-success/-danger/-warning/-info were referenced but never
+     defined; mapped to base semantic colors in styles.css :root. Measured
+     against composited alert backgrounds:
+     --accent-success on .alert-success bg                    7.52   PASS    PASS
+     --accent-danger  on .alert-error   bg                    5.20   PASS    PASS
+     --accent-warning on .alert-warning bg                    8.76   PASS    PASS
+     --accent-info    on .alert-info    bg                    5.29   PASS    PASS
+
+     SEMANTIC ALIAS TEXT on TINTED BADGE SURFACES (rgba(...,0.15) over #000)
+     --accent-success on .badge-active   bg                   7.03   PASS    PASS
+     --accent-danger  on .badge-revoked  bg                   4.97   PASS    PASS
+     --accent-warning on .badge-premium  bg                   8.08   PASS    PASS
+     --accent-info    on .badge-frozen   bg                   5.02   PASS    PASS
+     --accent-secondary (#a78bfa) on .badge-value bg          7.06   PASS    PASS  <- M3-8 new
+
+   Action items closed in this audit:
+     1. --text-muted bumped #666666 → #8a8a8a (styles.css :root)
+     2. --accent-success/-danger/-warning/-info defined as aliases of base
+        semantics (styles.css :root)
+     3. --accent-secondary defined as #a78bfa for .badge-value purple text
+     4. White text on gold-fill confirmed avoided in .btn-primary (uses #000)
+   ============================================================================ */
+
+/* ----------------------------------------------------------------------------
+   M0-3 — Global :focus-visible ring (keyboard-visible focus only)
+   ---------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+}
+
+/* Remove the default browser focus ring when :focus-visible is supported,
+   so mouse clicks don't show a ring but keyboard tabs do. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* ----------------------------------------------------------------------------
+   M0-4 — Skip-to-content link
+   ---------------------------------------------------------------------------- */
+.skip-link {
+    position: absolute;
+    top: -100px;
+    left: 0;
+    background: var(--accent);
+    color: #000;
+    padding: 12px 20px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    text-decoration: none;
+    z-index: 10000;
+    border-radius: 0 0 var(--radius-md) 0;
+    transition: top var(--transition-fast);
+    box-shadow: var(--shadow-md);
+}
+.skip-link:focus {
+    top: 0;
+    outline: 2px solid #fff;
+    outline-offset: -4px;
+}
+
+/* ----------------------------------------------------------------------------
+   M0-5 — 44pt minimum tap target utility + global icon-button enforcement
+   Apple HIG 44pt / Material 48dp baseline
+   ---------------------------------------------------------------------------- */
+.tap-44 {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Catch all icon-only button patterns the codebase uses today, without
+   requiring a per-call-site class addition. Applies on touch surfaces only
+   so desktop dense layouts stay compact. */
+@media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+    .btn-icon,
+    .icon-btn,
+    .icon-button,
+    .modal-close,
+    .toast-close,
+    .close-btn,
+    .btn-close,
+    .sidebar-icon,
+    .drawer-toggle,
+    .drawer-close,
+    button[aria-label]:not(.btn):not(.button):not([class*="btn-text"]),
+    .nav-item:not(.nav-label) {
+        min-width: 44px;
+        min-height: 44px;
+    }
+    /* When the button has only an SVG inside, center it visually */
+    .btn-icon > svg:only-child,
+    .icon-btn > svg:only-child {
+        margin: auto;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M0-9 — Input autofill + placeholder contrast on dark theme
+   ---------------------------------------------------------------------------- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+    -webkit-text-fill-color: var(--text-primary);
+    -webkit-box-shadow: 0 0 0 100px var(--bg-elevated) inset;
+    caret-color: var(--text-primary);
+    /* Defeat Chrome's slow yellow fade-in */
+    transition: background-color 5000s ease-in-out 0s;
+}
+::placeholder {
+    color: var(--text-muted);
+    opacity: 1; /* Firefox sets default opacity to less than 1 */
+}
+::-webkit-input-placeholder { color: var(--text-muted); opacity: 1; }
+::-moz-placeholder          { color: var(--text-muted); opacity: 1; }
+:-ms-input-placeholder      { color: var(--text-muted); opacity: 1; }
+
+/* ----------------------------------------------------------------------------
+   Visually hidden (screen-reader-only) utility
+   Used by M2-9 admin-audit live region and elsewhere
+   ---------------------------------------------------------------------------- */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   M1-1 / M2-1 — Off-canvas drawer (right side)
+   Driven by JS in /js/nav.js. Markup contract:
+     <button class="drawer-toggle tap-44" aria-label="Open menu" aria-expanded="false">…</button>
+     <div class="drawer-overlay" hidden></div>
+     <aside class="drawer" id="drawer" aria-hidden="true">…nav links…</aside>
+   ---------------------------------------------------------------------------- */
+.drawer-toggle {
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 8px;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.drawer-toggle:hover {
+    background: var(--bg-elevated);
+    border-color: var(--accent);
+}
+.drawer-toggle svg {
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+    display: block;
+}
+
+/* Hide the trigger on desktop. Admin and fan layouts override this with their
+   own breakpoint via .drawer-toggle--admin / .drawer-toggle--fan. */
+.drawer-toggle--fan {
+    display: none;
+}
+.drawer-toggle--admin {
+    display: none;
+}
+/* Fan pages collapse the sidebar at 900px (existing inline breakpoint). */
+@media (max-width: 900px) {
+    .drawer-toggle--fan { display: inline-flex; }
+}
+@media (max-width: 1023px) {
+    .drawer-toggle--admin { display: inline-flex; }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-1 — Admin sidebar collapses into the drawer at tablet/mobile widths.
+   At <=1023px the desktop icon-only sidebar is replaced by the off-canvas
+   drawer; main content reclaims the full width.
+   ---------------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+    .admin-layout > .sidebar {
+        display: none !important;
+    }
+    .admin-layout > .main-content,
+    .admin-layout > .main-content.collapsed,
+    .sidebar.collapsed ~ .main-content {
+        margin-left: 0 !important;
+    }
+    /* Header bar stretches the drawer toggle to the left, logout to the right. */
+    .admin-layout .header-bar {
+        justify-content: space-between;
+        gap: var(--space-md, 16px);
+    }
+}
+/* The drawer toggle in the admin header sits ahead of the logout button. */
+.admin-layout .header-bar .drawer-toggle--admin {
+    margin-right: auto;
+}
+
+/* Drawer-cloned admin nav-items: render like sidebar items inside the drawer. */
+.drawer-nav .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: var(--text-secondary, #a8a8a8);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    min-height: 44px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+.drawer-nav .nav-item:hover,
+.drawer-nav .nav-item:focus-visible {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+.drawer-nav .nav-item.active {
+    background: var(--accent-subtle, rgba(162, 129, 46, 0.15));
+    color: var(--accent-text, var(--accent));
+}
+.drawer-nav .nav-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   M1-1 — Mobile header bar styling for pages that opt-in via the
+   .mobile-header--fallback modifier. The 5 pages with their own inline
+   .mobile-header rules keep them; campaigns.html and gift-cards.html
+   add the modifier so they pick up these styles without colliding.
+   ---------------------------------------------------------------------------- */
+.mobile-header--fallback {
+    display: none;
+}
+@media (max-width: 900px) {
+    .mobile-header--fallback {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-md, 16px);
+        padding: 12px 20px calc(12px + env(safe-area-inset-top, 0)) 20px;
+        background: var(--bg-black, #000);
+        border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+        position: sticky;
+        top: 0;
+        z-index: 40;
+    }
+    .mobile-header--fallback .mobile-header-logo,
+    .mobile-header--fallback .mobile-header-title {
+        font-weight: 700;
+        color: var(--mavin-gold, var(--accent));
+        letter-spacing: 0.1em;
+        font-size: 1rem;
+    }
+}
+
+.drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 998;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-base);
+}
+.drawer-overlay.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(320px, 88vw);
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border);
+    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+    transform: translateX(100%);
+    transition: transform var(--transition-base);
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /* M3-2: respect notch/home indicator */
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    padding-right: env(safe-area-inset-right, 0);
+}
+.drawer.is-open {
+    transform: translateX(0);
+}
+.drawer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+.drawer-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: -0.01em;
+}
+.drawer-close {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+}
+.drawer-close:hover {
+    color: var(--accent);
+    background: var(--bg-elevated);
+}
+.drawer-nav {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 2px;
+    flex: 1;
+}
+.drawer-nav a,
+.drawer-nav button {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    font-size: 0.95rem;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    min-height: 44px;
+}
+.drawer-nav a:hover,
+.drawer-nav button:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+.drawer-nav a.is-active {
+    background: var(--accent-subtle);
+    color: var(--accent-text, var(--accent));
+}
+.drawer-nav .drawer-nav-icon {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+/* Lock body scroll while drawer is open */
+body.drawer-open {
+    overflow: hidden;
+}
+
+/* ----------------------------------------------------------------------------
+   M1-2 — Stats grids responsive
+   Affects .stats-grid containers in dashboard / tasks / rewards / squads /
+   admin pages.
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .stats-grid,
+    .stats-row,
+    .stat-cards {
+        gap: var(--space-sm);
+    }
+}
+@media (max-width: 480px) {
+    .stats-grid,
+    .stats-row,
+    .stat-cards {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: var(--space-sm);
+    }
+    .stat-card,
+    .stat-card-value {
+        font-size: 1.25rem;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M1-3 — Rewards filter bar wraps on small screens
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .filter-bar,
+    .rewards-filters,
+    .filters-row {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+    }
+}
+@media (max-width: 480px) {
+    .filter-bar > .search,
+    .rewards-filters > .search,
+    .filter-bar input[type="search"],
+    .rewards-filters input[type="search"],
+    .rewards-filters input[type="text"] {
+        flex: 1 1 100%;
+        width: 100%;
+        min-width: 0;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M1-5 / M3-2 — Floating action button safe-area
+   ---------------------------------------------------------------------------- */
+.fab,
+.floating-action,
+[data-fab] {
+    bottom: calc(var(--space-lg, 24px) + env(safe-area-inset-bottom, 0px));
+    right: calc(var(--space-lg, 24px) + env(safe-area-inset-right, 0px));
+}
+
+/* ----------------------------------------------------------------------------
+   M2-2 — Responsive table pattern (card-stack with data-label)
+   Markup contract:
+     <table class="responsive-table">
+       <thead>...</thead>
+       <tbody>
+         <tr><td data-label="Card #">CARD-001</td>...</tr>
+       </tbody>
+     </table>
+   At <= 768px each row becomes a vertical card. data-label is rendered
+   inline before each cell value so the user knows which column it is.
+   ---------------------------------------------------------------------------- */
+.responsive-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+@media (max-width: 768px) {
+    .responsive-table {
+        display: block;
+    }
+    .responsive-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        margin: -1px;
+        padding: 0;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+    .responsive-table tbody,
+    .responsive-table tr,
+    .responsive-table td {
+        display: block;
+        width: 100%;
+    }
+    .responsive-table tr {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        margin-bottom: var(--space-md);
+        padding: var(--space-md);
+        box-shadow: var(--shadow-sm);
+    }
+    .responsive-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: var(--space-md);
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border-subtle);
+        text-align: right;
+        word-break: break-word;
+    }
+    .responsive-table td:last-child {
+        border-bottom: none;
+    }
+    .responsive-table td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        text-align: left;
+        flex-shrink: 0;
+        white-space: nowrap;
+    }
+    /* Cells without data-label (e.g. an action-only cell) render as a button row */
+    .responsive-table td[data-label="Actions"],
+    .responsive-table td.actions-cell {
+        flex-direction: column;
+        align-items: stretch;
+        text-align: left;
+        gap: 8px;
+        padding-top: 12px;
+    }
+    .responsive-table td[data-label="Actions"]::before,
+    .responsive-table td.actions-cell::before {
+        margin-bottom: 4px;
+    }
+    .responsive-table td .button-group,
+    .responsive-table td .row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        width: 100%;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-3 — Admin Audit Log mobile polish
+   Filter bar collapses to vertical stack; pagination buttons get tap-44
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    #admin-auditPage .filter-bar,
+    #admin-auditPage .audit-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    #admin-auditPage .filter-bar > *,
+    #admin-auditPage .audit-filters > * {
+        width: 100%;
+    }
+    #admin-auditPage .pagination-bar,
+    .pagination-bar {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        justify-content: center;
+    }
+    #admin-auditPage .pagination-bar button,
+    .pagination-bar button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 16px;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-4 — Thumb-friendly row actions
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .row-actions button,
+    .row-actions a,
+    .table-actions button,
+    .responsive-table td button.btn-icon,
+    .responsive-table td button.btn-sm {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 10px 14px;
+        font-size: 0.95rem;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-5 — Fullscreen modals on mobile
+   Affects all .modal / .modal-overlay / dialog patterns in admin
+   ---------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+    .modal,
+    .modal-content,
+    .modal-card,
+    dialog,
+    [role="dialog"] {
+        width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        inset: 0;
+        overflow-y: auto;
+        padding-top: calc(var(--space-md) + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(var(--space-md) + env(safe-area-inset-bottom, 0px));
+    }
+    .modal-overlay,
+    .modal-backdrop {
+        padding: 0 !important;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-6 — Charts single-column on tablet/phone
+   ---------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .charts-grid,
+    .analytics-grid,
+    .chart-row {
+        grid-template-columns: 1fr !important;
+        gap: var(--space-md);
+    }
+    .chart-card,
+    .chart-container {
+        min-width: 0;
+        overflow-x: auto;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-7 — Sticky filter bar + pagination on long admin tables
+   ---------------------------------------------------------------------------- */
+@media (max-width: 1023px) {
+    .sticky-filters,
+    .table-filters[data-sticky] {
+        position: sticky;
+        top: var(--admin-topbar-height, 56px);
+        z-index: 20;
+        background: var(--bg-primary);
+        padding: var(--space-sm) 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .sticky-pagination,
+    .pagination-bar[data-sticky] {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        background: var(--bg-primary);
+        padding: var(--space-sm) 0;
+        border-top: 1px solid var(--border);
+        padding-bottom: calc(var(--space-sm) + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M2-8 — Admin 480px breakpoint sweep
+   ---------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+    .admin-topbar,
+    .topbar {
+        padding-left: var(--space-md);
+        padding-right: var(--space-md);
+        gap: var(--space-sm);
+    }
+    .admin-topbar .topbar-title,
+    .topbar h1 {
+        font-size: 1rem;
+    }
+    /* Multi-col card grids in admin Dashboard/Loyalty/Finance pages collapse */
+    .admin-card-grid,
+    .stat-card-grid {
+        grid-template-columns: 1fr !important;
+    }
+    /* Tighten admin sidebar drawer item padding on tiny phones */
+    .drawer-nav a,
+    .drawer-nav button {
+        padding: 12px 14px;
+        font-size: 0.9rem;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M3-1 — Skeleton loading states
+   Usage: <div class="skeleton skeleton-text"></div>, <tr class="skeleton-row">
+   ---------------------------------------------------------------------------- */
+@keyframes mavin-skeleton-shimmer {
+    0%   { background-position: -300px 0; }
+    100% { background-position: 300px 0; }
+}
+.skeleton {
+    background: linear-gradient(
+        90deg,
+        var(--bg-tertiary) 0%,
+        var(--bg-elevated) 50%,
+        var(--bg-tertiary) 100%
+    );
+    background-size: 600px 100%;
+    animation: mavin-skeleton-shimmer 1.6s infinite linear;
+    border-radius: var(--radius-sm);
+    color: transparent !important;
+    user-select: none;
+    pointer-events: none;
+}
+.skeleton-text {
+    height: 1em;
+    margin-bottom: 8px;
+    width: 80%;
+}
+.skeleton-text--short  { width: 40%; }
+.skeleton-text--long   { width: 100%; }
+.skeleton-card {
+    height: 96px;
+    border-radius: var(--radius-md);
+    margin-bottom: var(--space-md);
+}
+.skeleton-row td {
+    padding: 14px 12px;
+}
+.skeleton-row td > .skeleton {
+    height: 14px;
+    width: 70%;
+}
+
+/* ----------------------------------------------------------------------------
+   M2-3 — Admin audit log Details column disclosure (<details>/<summary>)
+   Used by adminAuditTableBody row template in public/js/admin.js. Native
+   element, free a11y semantics. Summary is tap-44 (min-height ≥ 44px).
+   ---------------------------------------------------------------------------- */
+.audit-details {
+    display: block;
+    max-width: 100%;
+}
+
+.audit-details > summary {
+    list-style: none;          /* hide default disclosure triangle */
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: 6px 12px;
+    border-radius: var(--radius-sm, 6px);
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
+    color: var(--accent-text, var(--accent, #d0a84a));
+    font-size: 0.8rem;
+    font-weight: 600;
+    user-select: none;
+    transition: background-color 150ms ease;
+}
+
+.audit-details > summary::-webkit-details-marker {
+    display: none;             /* Safari hide default triangle */
+}
+
+.audit-details > summary::before {
+    /* Custom chevron — rotates when open. */
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 5px solid currentColor;
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    transition: transform 150ms ease;
+}
+
+.audit-details[open] > summary::before {
+    transform: rotate(90deg);
+}
+
+.audit-details > summary:hover,
+.audit-details > summary:focus-visible {
+    background: rgba(162, 129, 46, 0.12);
+}
+
+.audit-details > summary:focus-visible {
+    outline: 2px solid var(--accent, #A2812E);
+    outline-offset: 2px;
+}
+
+.audit-details > pre {
+    margin: 8px 0 0;
+    padding: 10px 12px;
+    background: var(--bg-tertiary, rgba(255, 255, 255, 0.04));
+    border-radius: var(--radius-sm, 6px);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: var(--text-secondary, #cfcfcf);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow: auto;
+}
+
+/* ----------------------------------------------------------------------------
+   M3-2 — Safe-area-inset utilities
+   ---------------------------------------------------------------------------- */
+.safe-top    { padding-top:    env(safe-area-inset-top, 0); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+.safe-left   { padding-left:   env(safe-area-inset-left, 0); }
+.safe-right  { padding-right:  env(safe-area-inset-right, 0); }
+.safe-x {
+    padding-left:  env(safe-area-inset-left, 0);
+    padding-right: env(safe-area-inset-right, 0);
+}
+.safe-y {
+    padding-top:    env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Apply safe-area to common fixed elements automatically */
+.admin-topbar,
+.topbar,
+header[data-fixed] {
+    padding-top: env(safe-area-inset-top, 0);
+}
+
+/* ----------------------------------------------------------------------------
+   M3-3 — :active press feedback (touch + click)
+   Subtle scale + brightness shift; respects prefers-reduced-motion
+   ---------------------------------------------------------------------------- */
+@media (hover: none) and (pointer: coarse) {
+    button:active,
+    .btn:active,
+    a.button:active,
+    .nav-item:active,
+    .drawer-nav a:active,
+    .drawer-nav button:active {
+        transform: scale(0.97);
+        transition: transform 0.05s ease;
+    }
+}
+
+/* ----------------------------------------------------------------------------
+   M3-5 — Empty state styling
+   Markup: <div class="empty-state"><svg.../><h3/><p/></div>
+   ---------------------------------------------------------------------------- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-2xl) var(--space-lg);
+    color: var(--text-secondary);
+    gap: var(--space-md);
+}
+.empty-state svg {
+    width: 64px;
+    height: 64px;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+.empty-state h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+.empty-state p {
+    margin: 0;
+    font-size: 0.9rem;
+    max-width: 32ch;
+    line-height: 1.5;
+}
+
+/* ----------------------------------------------------------------------------
+   M3-6 — Toast dismiss button + stacking + transition (toast.js enhancer)
+   The .toast element is created by individual page implementations; this
+   block styles only the augmentations that toast.js layers on top:
+     - .toast-dismiss: × close button injected when missing
+     - .toast-dismissing: state class for fade-out
+     - position transition: keeps the stacking shifts smooth
+   Pages that already render their own .toast-close button keep it; this
+   ruleset uses .toast-dismiss so it never collides with existing styles.
+   ---------------------------------------------------------------------------- */
+.toast {
+    /* Smooth bottom-offset shifts when the stack reorders. */
+    transition: bottom 200ms ease, opacity 200ms ease, transform 200ms ease;
+}
+
+.toast .toast-dismiss {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: 0;
+    color: inherit;
+    opacity: 0.7;
+    margin-left: 12px;
+    padding: 6px;
+    border-radius: 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    min-height: 28px;
+    flex: 0 0 auto;
+    transition: background-color 150ms ease, opacity 150ms ease;
+}
+
+.toast .toast-dismiss:hover,
+.toast .toast-dismiss:focus-visible {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.toast .toast-dismiss:focus-visible {
+    outline: 2px solid var(--accent, #A2812E);
+    outline-offset: 2px;
+}
+
+.toast.toast-dismissing {
+    pointer-events: none;
+}
+
+/* ----------------------------------------------------------------------------
+   M0-7 — Reduced-motion catch-all (LAST so it overrides everything above)
+   WCAG 2.3.3 — Respect user OS preference
+   ---------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .skeleton {
+        animation: none !important;
+        background: var(--bg-tertiary);
+    }
+}

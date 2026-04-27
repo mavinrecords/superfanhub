@@ -3,6 +3,7 @@ const router = express.Router();
 const cardService = require('../services/cardService');
 const themeService = require('../services/themeService');
 const shareService = require('../services/shareService');
+const { getDatabase } = require('../db/database');
 const {
     validationLimiter,
     checkSuspiciousActivity,
@@ -10,6 +11,24 @@ const {
     normalizeCardCode
 } = require('../middleware/security');
 const { requireUser } = require('../middleware/requireUser');
+
+/**
+ * Record a validation attempt for rate-limiting / suspicious activity detection.
+ * The checkSuspiciousActivity middleware reads this table; nothing was writing to it before.
+ */
+function recordValidationAttempt(ip, code, success) {
+    try {
+        const db = getDatabase();
+        const codePrefix = code ? String(code).substring(0, 4) : null;
+        db.prepare(
+            `INSERT INTO validation_attempts (ip_address, code_prefix, attempted_at, success)
+             VALUES (?, ?, datetime('now'), ?)`
+        ).run(ip, codePrefix, success ? 1 : 0);
+    } catch (e) {
+        // Non-fatal — don't let logging failure break card validation
+        console.error('Failed to record validation attempt:', e.message);
+    }
+}
 
 // ... existing routes ...
 
@@ -132,12 +151,14 @@ router.post('/validate',
             const result = await cardService.validateCard(req.body.code, req.clientIp);
 
             if (!result.valid) {
+                recordValidationAttempt(req.clientIp, req.body.code, false);
                 return res.status(400).json({
                     valid: false,
                     error: result.error
                 });
             }
 
+            recordValidationAttempt(req.clientIp, req.body.code, true);
             res.json({
                 valid: true,
                 card: result.card
@@ -173,9 +194,11 @@ router.post('/redeem',
             );
 
             if (!result.success) {
+                recordValidationAttempt(req.clientIp, code, false);
                 return res.status(400).json({ error: result.error });
             }
 
+            recordValidationAttempt(req.clientIp, code, true);
             res.json(result);
         } catch (error) {
             console.error('Redemption error:', error);

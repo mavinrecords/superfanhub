@@ -47,9 +47,11 @@ async function login(req, res) {
     req.session.adminId = admin.id;
     req.session.adminUsername = admin.username;
     req.session.adminRole = admin.role;
+    req.session.mustChangePassword = admin.must_change_password === 1;
 
     res.json({
         success: true,
+        mustChangePassword: admin.must_change_password === 1,
         admin: {
             id: admin.id,
             username: admin.username,
@@ -105,10 +107,32 @@ async function changePassword(req, res) {
     }
 
     const newHash = await bcrypt.hash(newPassword, 12);
-    db.prepare('UPDATE admin_users SET password_hash = ? WHERE id = ?')
+    // Clear must_change_password flag once a new password has been set
+    db.prepare('UPDATE admin_users SET password_hash = ?, must_change_password = 0 WHERE id = ?')
         .run(newHash, admin.id);
 
+    if (req.session) {
+        req.session.mustChangePassword = false;
+    }
+
     res.json({ success: true, message: 'Password changed successfully' });
+}
+
+/**
+ * Block admin access until the password has been changed off the default.
+ * Allows the change-password endpoint and session/logout endpoints through.
+ */
+function blockUntilPasswordChanged(req, res, next) {
+    if (req.session && req.session.mustChangePassword) {
+        const allowed = ['/change-password', '/logout', '/session'];
+        if (!allowed.includes(req.path)) {
+            return res.status(403).json({
+                error: 'Password change required',
+                mustChangePassword: true
+            });
+        }
+    }
+    next();
 }
 
 module.exports = {
@@ -116,5 +140,6 @@ module.exports = {
     login,
     logout,
     checkSession,
-    changePassword
+    changePassword,
+    blockUntilPasswordChanged
 };

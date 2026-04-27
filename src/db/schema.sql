@@ -56,6 +56,26 @@ CREATE TABLE IF NOT EXISTS admin_users (
   last_login TEXT
 );
 
+-- Admin audit log (T0-6): every state-mutating admin action is recorded here.
+-- Called explicitly from route handlers via adminAuditService.logAdminAction().
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  admin_id INTEGER,
+  admin_username TEXT,
+  action TEXT NOT NULL,
+  entity_type TEXT,
+  entity_id TEXT,
+  details_json TEXT,
+  ip_address TEXT,
+  user_agent TEXT,
+  created_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_created ON admin_audit_log(created_at);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_admin ON admin_audit_log(admin_id, created_at);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_entity ON admin_audit_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_admin_audit_action ON admin_audit_log(action, created_at);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_gift_cards_code_prefix ON gift_cards(code_prefix);
 CREATE INDEX IF NOT EXISTS idx_gift_cards_user_id ON gift_cards(user_id);
@@ -555,3 +575,80 @@ CREATE TABLE IF NOT EXISTS task_fraud_flags (
 
 CREATE INDEX IF NOT EXISTS idx_fraud_flags_user ON task_fraud_flags(user_id);
 CREATE INDEX IF NOT EXISTS idx_fraud_flags_unresolved ON task_fraud_flags(resolved) WHERE resolved = 0;
+
+-- ============================================================
+-- PERFORMANCE INDEXES (Cleanup Pass)
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_campaigns_created_by
+    ON campaigns(created_by);
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id
+    ON user_profiles(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_loyalty_applications_user_id
+    ON loyalty_applications(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_fraud_flags_created_at
+    ON task_fraud_flags(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_streaming_history_created_at
+    ON streaming_history(created_at);
+
+CREATE INDEX IF NOT EXISTS idx_user_campaigns_campaign_status
+    ON user_campaigns(campaign_id, status);
+
+-- referrals.referrer_user_id index — column added via migrate.js
+-- This is a no-op on fresh DBs until migrate.js has run, but safe to include.
+-- CREATE INDEX IF NOT EXISTS idx_referrals_referrer_user_id ON referrals(referrer_user_id);
+
+-- ============================================================
+-- ARTIST ROSTER (Single Source of Truth)
+-- ============================================================
+-- Used by:
+--   • Frontend display (GET /api/artists) — hero tags, marquee
+--   • Spotify ingestion allowlist (isMavinTrack) via spotify_artist_id
+--   • All artist_id FK strings across tasks, squads, rewards, campaign_multipliers
+--
+-- Seeded and managed via src/db/migrate.js and POST/PATCH/DELETE /api/admin/artists.
+
+CREATE TABLE IF NOT EXISTS artists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  slug TEXT UNIQUE NOT NULL,                 -- kebab-case stable ID, e.g. "ayra-starr"; used as the FK string by other tables
+  display_name TEXT NOT NULL,
+  spotify_artist_id TEXT UNIQUE,             -- nullable — can be filled in later via admin UI
+  active INTEGER NOT NULL DEFAULT 1,
+  sort_order INTEGER NOT NULL DEFAULT 100,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_artists_active ON artists(active);
+CREATE INDEX IF NOT EXISTS idx_artists_spotify ON artists(spotify_artist_id);
+
+-- =============================================================
+-- LAST.FM CONNECTIONS (Phase 1.5 — zero-OAuth power-user path)
+-- =============================================================
+-- Username-based, no OAuth. Users type their Last.fm username on the
+-- dashboard; we query ws.audioscrobbler.com with a shared API key.
+-- Scrobbles land in streaming_history with spotify_track_id prefixed `lf:`
+-- so getStreamingStats + the fraud-prevention cap + variety bonus continue
+-- to work uniformly across both data sources.
+
+CREATE TABLE IF NOT EXISTS lastfm_connections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL UNIQUE,
+  lastfm_username TEXT NOT NULL,          -- stored lowercased (Last.fm is case-insensitive)
+  display_name TEXT,                      -- user.getInfo.realname (or username fallback)
+  playcount INTEGER DEFAULT 0,            -- from user.getInfo — lifetime scrobbles on Last.fm
+  registered_unix INTEGER,                -- user.getInfo.registered.unixtime
+  last_sync_at TEXT,
+  last_played_at_unix INTEGER DEFAULT 0,  -- high-water mark for incremental sync (uts of most recent stored scrobble)
+  total_mavin_scrobbles INTEGER DEFAULT 0,-- our running tally of Mavin-matched scrobbles ever ingested
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_lastfm_user ON lastfm_connections(user_id);
+CREATE INDEX IF NOT EXISTS idx_lastfm_username ON lastfm_connections(lastfm_username);

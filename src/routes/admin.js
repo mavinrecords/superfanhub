@@ -5,6 +5,17 @@ const qrService = require('../services/qrService');
 const analyticsService = require('../services/analyticsService');
 const { requireAdmin, login, logout, checkSession, changePassword } = require('../middleware/auth');
 const { loginLimiter, requireFields } = require('../middleware/security');
+const { getDatabase } = require('../db/database');
+const loyaltyCardService = require('../services/loyaltyCardService');
+const taskService = require('../services/taskService');
+const rewardCatalogService = require('../services/rewardCatalogService');
+const leaderboardService = require('../services/leaderboardService');
+const squadService = require('../services/squadService');
+const taskFraudService = require('../services/taskFraudService');
+const contributionService = require('../services/contributionService');
+const proofService = require('../services/proofService');
+const { logAdminAction, getRecentActions, getDistinctActions } = require('../services/adminAuditService');
+const { requireAdminRole } = require('../middleware/requireAdminRole');
 
 // Auth routes
 router.post('/login', loginLimiter, login);
@@ -77,7 +88,12 @@ router.post('/import/cards', requireAdmin, async (req, res) => {
             return res.status(400).json({ error: 'CSV content required' });
         }
 
-        const result = await importExportService.importCardsFromCSV(csvContent, req.session.user.username);
+        const result = await importExportService.importCardsFromCSV(csvContent, req.admin.username);
+        logAdminAction(req, 'IMPORT_CARDS_CSV', 'gift_card', null, {
+            imported: result?.imported,
+            skipped: result?.skipped,
+            errors: Array.isArray(result?.errors) ? result.errors.length : 0
+        });
         res.json(result);
     } catch (error) {
         console.error('Import error:', error);
@@ -111,6 +127,14 @@ router.post('/campaigns', requireAdmin, (req, res) => {
         const campaign = promoService.createCampaign(name, discountPercent, maxUses, expiresAt);
         const result = promoService.generatePromoCodes(campaign, count, prefix || 'PROMO');
 
+        logAdminAction(req, 'CREATE_CAMPAIGN', 'campaign', campaign?.id, {
+            name,
+            discount_percent: discountPercent,
+            max_uses: maxUses,
+            code_count: count,
+            prefix: prefix || 'PROMO',
+            expires_at: expiresAt || null
+        });
         res.json({ success: true, ...result });
     } catch (error) {
         console.error('Campaign creation error:', error);
@@ -184,9 +208,10 @@ router.get('/cards/:id/qr', requireAdmin, async (req, res) => {
     }
 });
 
-// Issue a new card
+// Issue a new card (T0-7: superadmin only — gift cards are real value)
 router.post('/cards',
     requireAdmin,
+    requireAdminRole('superadmin'),
     requireFields('tier', 'cardType'),
     async (req, res) => {
         try {
@@ -230,6 +255,14 @@ router.post('/cards',
                 ipAddress: req.clientIp
             });
 
+            logAdminAction(req, 'ISSUE_CARD', 'gift_card', card?.id, {
+                tier: card?.tier,
+                card_type: card?.card_type,
+                initial_value: card?.initial_value,
+                discount_percent: card?.discount_percent,
+                discount_uses_remaining: card?.discount_uses_remaining,
+                expires_at: card?.expires_at
+            });
             res.status(201).json(card);
         } catch (error) {
             console.error('Issue card error:', error);
@@ -238,9 +271,10 @@ router.post('/cards',
     }
 );
 
-// Bulk issue cards
+// Bulk issue cards (T0-7: superadmin only — bulk value issuance)
 router.post('/cards/bulk',
     requireAdmin,
+    requireAdminRole('superadmin'),
     requireFields('tier', 'cardType', 'quantity'),
     async (req, res) => {
         try {
@@ -274,6 +308,15 @@ router.post('/cards/bulk',
                 cards.push(card);
             }
 
+            logAdminAction(req, 'BULK_ISSUE_CARDS', 'gift_card', null, {
+                tier,
+                card_type: cardType,
+                initial_value: parseFloat(initialValue) || 0,
+                discount_percent: parseFloat(discountPercent) || 0,
+                quantity: cards.length,
+                first_id: cards[0]?.id || null,
+                last_id: cards[cards.length - 1]?.id || null
+            });
             res.status(201).json({
                 success: true,
                 count: cards.length,
@@ -300,6 +343,9 @@ router.post('/cards/:id/freeze', requireAdmin, (req, res) => {
             return res.status(400).json({ error: result.error });
         }
 
+        logAdminAction(req, 'FREEZE_CARD', 'gift_card', req.params.id, {
+            notes: req.body?.notes || null
+        });
         res.json(result);
     } catch (error) {
         console.error('Freeze card error:', error);
@@ -321,6 +367,9 @@ router.post('/cards/:id/unfreeze', requireAdmin, (req, res) => {
             return res.status(400).json({ error: result.error });
         }
 
+        logAdminAction(req, 'UNFREEZE_CARD', 'gift_card', req.params.id, {
+            notes: req.body?.notes || null
+        });
         res.json(result);
     } catch (error) {
         console.error('Unfreeze card error:', error);
@@ -328,8 +377,8 @@ router.post('/cards/:id/unfreeze', requireAdmin, (req, res) => {
     }
 });
 
-// Revoke a card
-router.post('/cards/:id/revoke', requireAdmin, (req, res) => {
+// Revoke a card (T0-7: superadmin only — permanently destroys card value)
+router.post('/cards/:id/revoke', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
     try {
         const result = cardService.revokeCard(
             parseInt(req.params.id),
@@ -342,6 +391,9 @@ router.post('/cards/:id/revoke', requireAdmin, (req, res) => {
             return res.status(400).json({ error: result.error });
         }
 
+        logAdminAction(req, 'REVOKE_CARD', 'gift_card', req.params.id, {
+            notes: req.body?.notes || null
+        });
         res.json(result);
     } catch (error) {
         console.error('Revoke card error:', error);
@@ -412,9 +464,6 @@ router.get('/cards/export/csv', requireAdmin, (req, res) => {
 // =============================================================
 // SUPERFAN USER MANAGEMENT
 // =============================================================
-
-const { getDatabase } = require('../db/database');
-const loyaltyCardService = require('../services/loyaltyCardService');
 
 // Get all SuperFan users
 router.get('/superfans', requireAdmin, (req, res) => {
@@ -515,13 +564,14 @@ router.get('/superfans/:id', requireAdmin, (req, res) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Get activity history
+        // Get activity history — join through users table for future-proof user_id alignment
         const activity = db.prepare(`
-            SELECT * FROM loyalty_transactions
-            WHERE email = ?
-            ORDER BY created_at DESC
+            SELECT lt.* FROM loyalty_transactions lt
+            JOIN users u ON lt.email = u.email
+            WHERE u.id = ?
+            ORDER BY lt.created_at DESC
             LIMIT 20
-        `).all(user.email);
+        `).all(userId);
 
         res.json({ user, activity });
     } catch (error) {
@@ -530,8 +580,8 @@ router.get('/superfans/:id', requireAdmin, (req, res) => {
     }
 });
 
-// Manually add points to a user
-router.post('/superfans/:id/points', requireAdmin, (req, res) => {
+// Manually add points to a user (T0-7: superadmin only — manual point issuance is real money)
+router.post('/superfans/:id/points', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
     try {
         const userId = parseInt(req.params.id);
         const { amount, description } = req.body;
@@ -547,6 +597,11 @@ router.post('/superfans/:id/points', requireAdmin, (req, res) => {
             'admin'
         );
 
+        logAdminAction(req, 'ADJUST_POINTS', 'user', userId, {
+            amount,
+            description: description || null,
+            direction: amount >= 0 ? 'credit' : 'debit'
+        });
         res.json({ success: true, ...result });
     } catch (error) {
         console.error('Add points error:', error);
@@ -572,6 +627,11 @@ router.post('/superfans/:id/toggle-status', requireAdmin, (req, res) => {
             UPDATE loyalty_cards SET status = ?, updated_at = datetime('now') WHERE id = ?
         `).run(newStatus, card.id);
 
+        logAdminAction(req, 'TOGGLE_USER_STATUS', 'user', userId, {
+            loyalty_card_id: card.id,
+            old_status: card.status,
+            new_status: newStatus
+        });
         res.json({ success: true, newStatus });
     } catch (error) {
         console.error('Toggle status error:', error);
@@ -594,14 +654,6 @@ router.get('/superfans/leaderboard', requireAdmin, (req, res) => {
 // =============================================================
 // COMMUNITY TASK MASTER — ADMIN ENDPOINTS
 // =============================================================
-
-const taskService = require('../services/taskService');
-const rewardCatalogService = require('../services/rewardCatalogService');
-const leaderboardService = require('../services/leaderboardService');
-const squadService = require('../services/squadService');
-const taskFraudService = require('../services/taskFraudService');
-const contributionService = require('../services/contributionService');
-const proofService = require('../services/proofService');
 
 // ─── TASK MANAGEMENT ────────────────────────────────────────
 
@@ -637,6 +689,11 @@ router.post('/tasks', requireAdmin, (req, res) => {
             ...req.body,
             createdBy: req.admin.username
         });
+        logAdminAction(req, 'CREATE_TASK', 'task', task?.id, {
+            title: task?.title || req.body?.title,
+            type: task?.type || req.body?.type,
+            points: task?.points || req.body?.points
+        });
         res.status(201).json(task);
     } catch (error) {
         console.error('Create task error:', error);
@@ -648,16 +705,20 @@ router.post('/tasks', requireAdmin, (req, res) => {
 router.put('/tasks/:id', requireAdmin, (req, res) => {
     try {
         const task = taskService.updateTask(parseInt(req.params.id), req.body);
+        logAdminAction(req, 'UPDATE_TASK', 'task', req.params.id, {
+            changes: req.body
+        });
         res.json(task);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update task' });
     }
 });
 
-// Delete task
-router.delete('/tasks/:id', requireAdmin, (req, res) => {
+// Delete task (T0-7: superadmin only — destructive)
+router.delete('/tasks/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
     try {
         taskService.deleteTask(parseInt(req.params.id));
+        logAdminAction(req, 'DELETE_TASK', 'task', req.params.id, null);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete task' });
@@ -686,6 +747,15 @@ router.post('/multipliers', requireAdmin, (req, res) => {
         `).run(campaignId || null, title, multiplier || 1.5, appliesTo || 'all', artistId || null, startDate, endDate, req.admin.username);
 
         const created = db.prepare('SELECT * FROM campaign_multipliers WHERE id = ?').get(result.lastInsertRowid);
+        logAdminAction(req, 'CREATE_MULTIPLIER', 'multiplier', created?.id, {
+            title,
+            multiplier: multiplier || 1.5,
+            applies_to: appliesTo || 'all',
+            artist_id: artistId || null,
+            campaign_id: campaignId || null,
+            start_date: startDate,
+            end_date: endDate
+        });
         res.status(201).json(created);
     } catch (error) {
         console.error('Create multiplier error:', error);
@@ -693,10 +763,15 @@ router.post('/multipliers', requireAdmin, (req, res) => {
     }
 });
 
-router.delete('/multipliers/:id', requireAdmin, (req, res) => {
+router.delete('/multipliers/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
     try {
         const db = getDatabase();
+        // Capture snapshot BEFORE deletion so audit trail has context
+        const snapshot = db.prepare('SELECT * FROM campaign_multipliers WHERE id = ?').get(parseInt(req.params.id));
         db.prepare('DELETE FROM campaign_multipliers WHERE id = ?').run(parseInt(req.params.id));
+        logAdminAction(req, 'DELETE_MULTIPLIER', 'multiplier', req.params.id, {
+            deleted_row: snapshot || null
+        });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete multiplier' });
@@ -718,6 +793,10 @@ router.get('/task-fraud', requireAdmin, (req, res) => {
 router.post('/task-fraud/:id/resolve', requireAdmin, (req, res) => {
     try {
         taskFraudService.resolveFlag(parseInt(req.params.id), req.admin.username);
+        logAdminAction(req, 'RESOLVE_FRAUD_FLAG', 'task_fraud_flag', req.params.id, {
+            resolution: req.body?.resolution || null,
+            notes: req.body?.notes || null
+        });
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ error: 'Failed to resolve flag' });
@@ -747,6 +826,12 @@ router.post('/verifications/:id/review', requireAdmin, (req, res) => {
             taskService.completeTask(item.user_id, item.task_id, req.admin.username);
         }
 
+        logAdminAction(req, 'REVIEW_VERIFICATION', 'verification', req.params.id, {
+            result,
+            notes: notes || null,
+            user_id: item?.user_id || null,
+            task_id: item?.task_id || null
+        });
         res.json({ success: true });
     } catch (error) {
         console.error('Review error:', error);
@@ -777,6 +862,12 @@ router.get('/rewards', requireAdmin, (req, res) => {
 router.post('/rewards', requireAdmin, (req, res) => {
     try {
         const reward = rewardCatalogService.createReward(req.body);
+        logAdminAction(req, 'CREATE_REWARD', 'reward', reward?.id, {
+            name: reward?.name || req.body?.name,
+            points_cost: reward?.points_cost || req.body?.points_cost,
+            tier: reward?.tier || req.body?.tier,
+            inventory: reward?.inventory ?? req.body?.inventory ?? null
+        });
         res.status(201).json(reward);
     } catch (error) {
         console.error('Create reward error:', error);
@@ -787,6 +878,9 @@ router.post('/rewards', requireAdmin, (req, res) => {
 router.put('/rewards/:id', requireAdmin, (req, res) => {
     try {
         const reward = rewardCatalogService.updateReward(parseInt(req.params.id), req.body);
+        logAdminAction(req, 'UPDATE_REWARD', 'reward', req.params.id, {
+            changes: req.body
+        });
         res.json(reward);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update reward' });
@@ -820,6 +914,7 @@ router.get('/fan-analytics', requireAdmin, (req, res) => {
 router.post('/leaderboard/refresh', requireAdmin, (req, res) => {
     try {
         const result = leaderboardService.refreshAllLeaderboards();
+        logAdminAction(req, 'REFRESH_LEADERBOARDS', 'leaderboard', null, result || null);
         res.json({ success: true, ...result });
     } catch (error) {
         res.status(500).json({ error: 'Failed to refresh leaderboards' });
@@ -831,6 +926,10 @@ router.post('/leaderboard/refresh', requireAdmin, (req, res) => {
 router.post('/squads', requireAdmin, (req, res) => {
     try {
         const squad = squadService.createSquad(req.body);
+        logAdminAction(req, 'CREATE_SQUAD', 'squad', squad?.id, {
+            name: squad?.name || req.body?.name,
+            artist_id: squad?.artist_id || req.body?.artist_id || null
+        });
         res.status(201).json(squad);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create squad' });
@@ -843,9 +942,49 @@ router.post('/squads/:id/missions', requireAdmin, (req, res) => {
             squadId: parseInt(req.params.id),
             ...req.body
         });
+        logAdminAction(req, 'CREATE_SQUAD_MISSION', 'squad_mission', mission?.id, {
+            squad_id: req.params.id,
+            title: mission?.title || req.body?.title,
+            points: mission?.points || req.body?.points
+        });
         res.status(201).json(mission);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create squad mission' });
+    }
+});
+
+// =============================================================
+// ADMIN AUDIT LOG (T0-6)
+// =============================================================
+
+// Read recent audit rows with filters.
+// Query params: limit, offset, action, entityType, adminId, since, until
+router.get('/audit-log', requireAdmin, (req, res) => {
+    try {
+        const { limit, offset, action, entityType, adminId, since, until } = req.query;
+        const result = getRecentActions({
+            limit: limit ? parseInt(limit, 10) : 100,
+            offset: offset ? parseInt(offset, 10) : 0,
+            action: action || null,
+            entityType: entityType || null,
+            adminId: adminId ? parseInt(adminId, 10) : null,
+            since: since || null,
+            until: until || null
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Audit log error:', error);
+        res.status(500).json({ error: 'Failed to load audit log' });
+    }
+});
+
+// Distinct action codes seen so far (feeds a filter dropdown in the UI).
+router.get('/audit-log/actions', requireAdmin, (req, res) => {
+    try {
+        res.json(getDistinctActions());
+    } catch (error) {
+        console.error('Audit actions error:', error);
+        res.status(500).json({ error: 'Failed to load audit actions' });
     }
 });
 

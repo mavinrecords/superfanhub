@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
     <meta name="description" content="Your Mavin SuperFan Hub Dashboard">
     <title>Dashboard | Mavin SuperFan Hub</title>
     <link rel="icon" type="image/png" href="/images/logo.png">
@@ -988,17 +989,26 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/mobile.css">
 </head>
 
 <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
     <!-- Mobile Header -->
     <div class="mobile-header">
         <span class="mobile-header-logo">MAVIN</span>
-        <nav class="mobile-nav-links">
-            <a href="/tasks">Tasks</a>
-            <a href="/leaderboard">Leaderboard</a>
-            <a href="/rewards">Rewards</a>
-        </nav>
+        <button type="button" class="drawer-toggle drawer-toggle--fan tap-44"
+                data-drawer-source=".sidebar"
+                data-drawer-title="Menu"
+                aria-label="Open menu"
+                aria-expanded="false">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+        </button>
     </div>
 
     <!-- Sidebar -->
@@ -1069,7 +1079,7 @@
     </aside>
 
     <!-- Main Content -->
-    <main class="main">
+    <main class="main" id="main" tabindex="-1">
         <header class="page-header">
             <div class="page-greeting">Welcome back</div>
             <h1 class="page-title" id="greetingName">Loading...</h1>
@@ -1168,6 +1178,32 @@
             </div>
         </div>
 
+        <!-- Last.fm Connection (Phase 1.5 — zero-OAuth power-user path) -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">Last.fm Connection</h2>
+            </div>
+            <div class="spotify-connect" id="lastfmConnectWrap">
+                <div class="spotify-icon" style="color:#d51007;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10.584 17.084l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.419 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.285 4.81 3.409 0 5.718-1.045 5.718-3.794 0-2.226-1.265-3.381-3.629-3.931l-1.759-.384c-1.211-.275-1.567-.77-1.567-1.595 0-.933.743-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.931 0 1.87.907 3.05 3.189 3.601l1.87.44c1.402.329 1.869.908 1.869 1.704 0 1.019-.99 1.431-2.859 1.431-2.776 0-3.931-1.458-4.59-3.463l-.908-2.748c-1.155-3.574-3.024-4.894-6.708-4.894C2.144 5.799 0 8.11 0 12.041c0 3.793 1.952 5.855 5.47 5.855 2.831 0 4.207-1.32 5.114-2.812z"/>
+                    </svg>
+                </div>
+                <div class="spotify-info" style="flex:1;">
+                    <div class="spotify-title">Connect Last.fm</div>
+                    <div class="spotify-text">Already scrobbling? Just type your Last.fm username — no OAuth, no login.</div>
+                    <div id="lastfmFormRow" style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+                        <input id="lastfmUsernameInput" type="text" autocomplete="off" spellcheck="false"
+                               autocapitalize="none" autocorrect="off" inputmode="text" enterkeyhint="go"
+                               placeholder="Last.fm username"
+                               style="flex:1;min-width:0;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#fff;font-size:0.875rem;font-family:inherit;" />
+                    </div>
+                </div>
+                <button id="lastfmConnectBtn" class="lastfm-btn" data-action="connectLastfm"
+                        style="background:#d51007;color:#fff;border:0;padding:10px 18px;border-radius:10px;font-weight:600;cursor:pointer;white-space:nowrap;">Connect</button>
+            </div>
+        </div>
+
         <!-- Recent Activity -->
         <div class="section">
             <div class="section-header">
@@ -1204,7 +1240,7 @@
                 if (event.data.type === 'spotify_connected') {
                     showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
                     spotifyConnected = true;
-                    renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                    renderSpotifyConnected(document.getElementById('spotifyConnectWrap'));
                     // Kick off first sync in background
                     syncSpotify().catch(() => { });
                 } else if (event.data.type === 'spotify_error') {
@@ -1238,10 +1274,12 @@
             // Load Pathfix SDK with this user's ID (enables Spotify OAuth popup)
             loadPathfixSDK(currentUser.id);
 
-            // Load all data in parallel — loadSpotifyStatus uses browser-side Pathfix check
+            // Load all data in parallel — loadSpotifyStatus + loadLastfmStatus both
+            // hit their own /status endpoints; independent cards, no ordering concerns.
             Promise.all([
                 loadLoyaltyCard(),
                 loadSpotifyStatus(),
+                loadLastfmStatus(),
                 loadStreamingStats(),
                 loadUserStats(),
                 loadActivity(),
@@ -1384,7 +1422,7 @@
             script.setAttribute('id', 'pinc.helper');
             script.setAttribute('modules', 'pinc.oauth.min');
             script.setAttribute('data-user-id', String(userId));
-            script.setAttribute('data-public-key', '901B9B27-BCD0-482F-9F44-7443778A0542');
+            script.setAttribute('data-public-key', '989EF57B-80B0-4FCE-BDAE-6BF0C0EA1777');
 
             script.onload = () => {
                 console.log('[Pathfix] helper.js loaded, $pinc=', typeof $pinc);
@@ -1402,7 +1440,7 @@
                             console.log('[Pathfix] spotify.connected event fired');
                             showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
                             spotifyConnected = true;
-                            renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                            renderSpotifyConnected(document.getElementById('spotifyConnectWrap'));
                             syncSpotify();
                         });
                     }
@@ -1411,14 +1449,14 @@
                         console.log('[Pathfix] getState result:', JSON.stringify(res));
                         spotifyConnected = !!(res && res.connected);
                         if (spotifyConnected) {
-                            renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                            renderSpotifyConnected(document.getElementById('spotifyConnectWrap'));
                         } else {
-                            // Fallback: double-check via direct Pathfix API
-                            checkSpotifyViaPathfix().then(connected => {
-                                console.log('[Pathfix] direct API check connected:', connected);
+                            // Fallback: server-backed verify (reconciles our DB too)
+                            checkSpotifyViaServer().then(connected => {
+                                console.log('[Spotify] server verify connected:', connected);
                                 if (connected) {
                                     spotifyConnected = true;
-                                    renderSpotifyConnected(document.querySelector('.spotify-connect'));
+                                    renderSpotifyConnected(document.getElementById('spotifyConnectWrap'));
                                 }
                             });
                         }
@@ -1509,47 +1547,112 @@
             });
         }
 
-        function connectSpotify() {
-            const PATHFIX_CONNECT = `https://labs.pathfix.com/integrate/page?public_key=901B9B27-BCD0-482F-9F44-7443778A0542&user_id=${currentUser?.id || ''}`;
-
-            if (typeof $pinc !== 'undefined' && $pinc.oauth) {
-                $pinc.oauth.connect('spotify');
+        async function connectSpotify() {
+            // Fetch the Spotify OAuth URL from our server.
+            // The URL is accounts.spotify.com/authorize?... — first-party Spotify consent screen.
+            let authUrl;
+            try {
+                const token = localStorage.getItem('authToken');
+                const r = await fetch('/api/spotify/connect', {
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                const data = await r.json();
+                if (!r.ok || !data.authUrl) {
+                    throw new Error(data.error || 'Failed to get Spotify connect URL');
+                }
+                authUrl = data.authUrl;
+            } catch (e) {
+                console.error('[Spotify] connect URL fetch failed:', e);
+                showNotification('Could not start Spotify connection. Please try again.', 'error');
                 return;
             }
 
-            // Open Pathfix connect page in a popup
-            const popup = window.open(PATHFIX_CONNECT, 'pathfix_spotify', 'width=580,height=700,scrollbars=yes,resizable=yes');
+            // Open Spotify consent page in a popup. This is the native Spotify
+            // "Mavin wants to access..." screen — no third-party middleman.
+            const popup = window.open(authUrl, 'spotify_oauth', 'width=580,height=700,scrollbars=yes,resizable=yes');
             if (!popup) {
                 // Popup blocked — fall back to same-tab redirect
-                window.location.href = PATHFIX_CONNECT;
+                window.location.href = authUrl;
                 return;
             }
 
-            // Poll until popup closes, then check via Pathfix directly (server is IP-blocked)
+            // Single-shot UI flip — both timers race to detect "connected"; first
+            // one in wins, the other is harmless no-op.
+            let detected = false;
+            const flipToConnected = () => {
+                if (detected) return;
+                detected = true;
+                spotifyConnected = true;
+                renderSpotifyConnected(document.getElementById('spotifyConnectWrap'));
+                showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
+                syncSpotify().catch(() => { });
+            };
+
+            // Verify poller: runs every 2s WHILE the popup is open. As soon as
+            // Pathfix has a valid token for this user, /verify returns 200 and
+            // we flip the UI + close the popup automatically — user doesn't have
+            // to manually dismiss the Pathfix tab.
+            const verifyTimer = setInterval(async () => {
+                if (!popup || popup.closed) { clearInterval(verifyTimer); return; }
+                if (await checkSpotifyViaServer()) {
+                    clearInterval(verifyTimer);
+                    clearInterval(pollTimer);
+                    try { popup.close(); } catch { }
+                    flipToConnected();
+                }
+            }, 2000);
+            // Safety stop after 2 min regardless — prevents a runaway timer if
+            // the user wanders off with the popup open.
+            setTimeout(() => clearInterval(verifyTimer), 120000);
+
+            // Popup-closed fallback: user closed popup before verify poller
+            // caught the token flip. One last 1.2s-delayed check in case Pathfix
+            // saved the token in the instant before closing.
             const pollTimer = setInterval(async () => {
                 if (!popup || popup.closed) {
                     clearInterval(pollTimer);
+                    clearInterval(verifyTimer);
                     await new Promise(r => setTimeout(r, 1200)); // let Pathfix save token
-                    const connected = await checkSpotifyViaPathfix();
+                    const connected = await checkSpotifyViaServer();
                     if (connected) {
-                        spotifyConnected = true;
-                        renderSpotifyConnected(document.querySelector('.spotify-connect'));
-                        showNotification('Spotify connected! 🎵 Syncing your streams…', 'success');
-                        syncSpotify().catch(() => { });
-                    } else {
-                        showNotification('Spotify not detected yet — if you completed auth, try closing the Pathfix tab and waiting a few seconds.', 'info');
+                        flipToConnected();
+                    } else if (!detected) {
+                        showNotification('Spotify not detected yet — if you completed auth, try again in a few seconds.', 'info');
                     }
                 }
             }, 1500);
         }
 
-        // ── Client-side Pathfix status check ──────────────────────────────────
-        // Server-side calls to Pathfix are IP-blocked; must be called from browser.
+        // ── Server-backed Spotify verification (authoritative) ────────────────
+        // Hits POST /api/spotify/verify → server calls /me via the Pathfix proxy
+        // and reconciles spotify_connections. This replaces the (now-gone) Pathfix
+        // webhook as the "is this user connected?" signal, so our DB stays in
+        // sync with reality without any push-model config on Pathfix's side.
+        async function checkSpotifyViaServer() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const r = await fetch('/api/spotify/verify', {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                if (!r.ok) return false;
+                const { connected } = await r.json();
+                return !!connected;
+            } catch (e) {
+                console.error('[Spotify] verify error:', e);
+                return false;
+            }
+        }
+
+        // ── Legacy browser-direct Pathfix check (kept as fallback) ────────────
+        // Used only if the server-backed /verify endpoint ever fails; not the
+        // primary source of truth anymore. Safe to delete in a future pass once
+        // /verify has been in production for a while.
         async function checkSpotifyViaPathfix() {
             if (!currentUser?.id) { console.log('[Pathfix] checkSpotifyViaPathfix: no currentUser.id'); return false; }
             try {
                 const params = new URLSearchParams({
-                    public_key: '901B9B27-BCD0-482F-9F44-7443778A0542',
+                    public_key: '989EF57B-80B0-4FCE-BDAE-6BF0C0EA1777',
                     user_id: String(currentUser.id),
                     url: 'https://api.spotify.com/v1/me',
                     method: 'GET'
@@ -1572,7 +1675,7 @@
         }
 
         async function loadSpotifyStatus() {
-            const container = document.querySelector('.spotify-connect');
+            const container = document.getElementById('spotifyConnectWrap');
             if (!container) return;
 
             // 1. Try Pathfix JS SDK first (if loaded)
@@ -1584,8 +1687,8 @@
                 return;
             }
 
-            // 2. Call Pathfix proxy directly from the browser (server is IP-blocked)
-            const connected = await checkSpotifyViaPathfix();
+            // 2. Server-backed verify (authoritative — reconciles spotify_connections too)
+            const connected = await checkSpotifyViaServer();
             spotifyConnected = connected;
             if (connected) renderSpotifyConnected(container);
         }
@@ -1707,9 +1810,154 @@
             }
         }
 
+        // ── Last.fm connection (Phase 1.5, zero-OAuth by username) ─────────
+        async function connectLastfm() {
+            const token = localStorage.getItem('authToken');
+            const inputEl = document.getElementById('lastfmUsernameInput');
+            const btn = document.getElementById('lastfmConnectBtn');
+            const username = (inputEl?.value || '').trim();
+            if (!username) {
+                showNotification('Enter your Last.fm username first', 'info');
+                inputEl?.focus();
+                return;
+            }
+            const originalText = btn.textContent;
+            btn.textContent = 'Connecting...';
+            btn.disabled = true;
+            try {
+                const res = await fetch('/api/lastfm/connect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                    },
+                    body: JSON.stringify({ username })
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showNotification(data.error || 'Last.fm connection failed', 'error');
+                    return;
+                }
+                const earned = data?.initialSync?.pointsAwarded || 0;
+                showNotification(
+                    earned > 0
+                        ? `Last.fm connected! +${earned} points from your recent scrobbles 🎶`
+                        : 'Last.fm connected! Scrobble a Mavin track and hit sync to earn.',
+                    'success'
+                );
+                renderLastfmConnected(document.querySelector('#lastfmConnectWrap'), data.connection);
+                loadLoyaltyCard();
+                loadStreamingStats();
+                loadActivity();
+            } catch (e) {
+                console.error('[Lastfm] connect error:', e);
+                showNotification('Network error connecting Last.fm', 'error');
+            } finally {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        async function syncLastfm() {
+            const token = localStorage.getItem('authToken');
+            const btn = document.querySelector('#lastfmConnectWrap .lastfm-btn');
+            const originalText = btn ? btn.textContent : 'Sync Now';
+            if (btn) { btn.textContent = 'Syncing...'; btn.disabled = true; }
+            try {
+                const res = await fetch('/api/lastfm/sync', {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                const data = await res.json();
+                if (!res.ok) {
+                    showNotification(data.error || 'Last.fm sync failed', 'error');
+                    return;
+                }
+                if (data.pointsAwarded > 0) {
+                    showNotification(`Synced! +${data.pointsAwarded} points from Last.fm scrobbles`, 'success');
+                    loadLoyaltyCard();
+                } else {
+                    showNotification('Synced! No new Mavin scrobbles since last sync.', 'info');
+                }
+                loadStreamingStats();
+                loadActivity();
+            } catch (e) {
+                console.error('[Lastfm] sync error:', e);
+                showNotification('Last.fm sync failed', 'error');
+            } finally {
+                if (btn) { btn.textContent = originalText; btn.disabled = false; }
+            }
+        }
+
+        async function disconnectLastfm() {
+            const token = localStorage.getItem('authToken');
+            if (!confirm('Disconnect Last.fm? Your scrobble history stays — we just stop pulling new data.')) return;
+            try {
+                const res = await fetch('/api/lastfm/disconnect', {
+                    method: 'POST',
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                if (!res.ok) {
+                    const d = await res.json().catch(() => ({}));
+                    showNotification(d.error || 'Disconnect failed', 'error');
+                    return;
+                }
+                showNotification('Last.fm disconnected', 'info');
+                // Re-render the card back to its initial (form) state.
+                location.reload();
+            } catch (e) {
+                console.error('[Lastfm] disconnect error:', e);
+                showNotification('Network error disconnecting Last.fm', 'error');
+            }
+        }
+
+        async function loadLastfmStatus() {
+            const container = document.querySelector('#lastfmConnectWrap');
+            if (!container) return;
+            const token = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/lastfm/status', {
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.connected) {
+                    renderLastfmConnected(container, {
+                        username: data.username,
+                        displayName: data.displayName,
+                        playcount: data.playcount,
+                        totalMavinScrobbles: data.totalMavinScrobbles
+                    });
+                }
+            } catch (e) {
+                console.error('[Lastfm] status error:', e);
+            }
+        }
+
+        function renderLastfmConnected(container, connection) {
+            if (!container) return;
+            const uname = connection?.username || '';
+            const mavinCount = connection?.totalMavinScrobbles || 0;
+            container.innerHTML = `
+                <div class="spotify-icon" style="color:#d51007;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M10.584 17.084l-.88-2.392s-1.43 1.594-3.573 1.594c-1.897 0-3.244-1.649-3.244-4.288 0-3.381 1.704-4.591 3.381-4.591 2.419 0 3.189 1.567 3.849 3.574l.88 2.749c.88 2.666 2.529 4.81 7.285 4.81 3.409 0 5.718-1.045 5.718-3.794 0-2.226-1.265-3.381-3.629-3.931l-1.759-.384c-1.211-.275-1.567-.77-1.567-1.595 0-.933.743-1.484 1.952-1.484 1.32 0 2.034.495 2.144 1.677l2.749-.33c-.22-2.474-1.924-3.492-4.729-3.492-2.474 0-4.893.935-4.893 3.931 0 1.87.907 3.05 3.189 3.601l1.87.44c1.402.329 1.869.908 1.869 1.704 0 1.019-.99 1.431-2.859 1.431-2.776 0-3.931-1.458-4.59-3.463l-.908-2.748c-1.155-3.574-3.024-4.894-6.708-4.894C2.144 5.799 0 8.11 0 12.041c0 3.793 1.952 5.855 5.47 5.855 2.831 0 4.207-1.32 5.114-2.812z"/>
+                    </svg>
+                </div>
+                <div class="spotify-info" style="flex:1;">
+                    <div class="spotify-title" style="color:#d51007;">✓ Last.fm Connected</div>
+                    <div class="spotify-text">@${escapeHtml(uname)} · ${mavinCount.toLocaleString()} Mavin scrobbles tracked</div>
+                </div>
+                <button class="lastfm-btn" data-action="syncLastfm"
+                        style="background:#d51007;color:#fff;border:0;padding:10px 18px;border-radius:10px;font-weight:600;cursor:pointer;white-space:nowrap;">Sync Now</button>
+                <button class="lastfm-btn" data-action="disconnectLastfm"
+                        style="background:transparent;color:#d51007;border:1px solid rgba(213,16,7,0.5);padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;white-space:nowrap;margin-left:6px;">Disconnect</button>
+            `;
+        }
+
         async function syncSpotify() {
             const token = localStorage.getItem('authToken');
-            const btn = document.querySelector('.spotify-btn');
+            const btn = document.querySelector('#spotifyConnectWrap .spotify-btn');
 
             btn.textContent = 'Syncing...';
             btn.disabled = true;
@@ -1761,9 +2009,13 @@
             const bg = { success: '#0d2818', error: '#2a0d0d', info: '#1a1200' };
             const border = { success: 'rgba(16,185,129,0.4)', error: 'rgba(239,68,68,0.4)', info: 'rgba(162,129,46,0.4)' };
             const icon = { success: '✓', error: '✕', info: 'ℹ' };
-            const iconColor = { success: '#10b981', error: '#ef4444', info: '#A2812E' };
+            const iconColor = { success: '#10b981', error: '#ef4444', info: 'var(--accent-text, var(--accent))' };
 
             const n = document.createElement('div');
+            // M0-6: ARIA roles so screen readers announce notifications.
+            n.setAttribute('role', type === 'error' ? 'alert' : 'status');
+            n.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+            n.setAttribute('aria-atomic', 'true');
             n.style.cssText = `
                 position: fixed; bottom: 32px; right: 32px;
                 padding: 16px 20px; background: ${bg[type]};
@@ -1782,10 +2034,15 @@
             const token = localStorage.getItem('authToken');
             fetch('/api/user/logout', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+                credentials: 'same-origin'
             }).finally(() => {
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('user');
+                // Kill the session cookie client-side in case the server response
+                // didn't reach us (offline, CDN cache, or a 5xx that never set
+                // a clear-cookie header). Belt-and-braces.
+                document.cookie = 'connect.sid=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
                 window.location.href = '/login';
             });
         }
@@ -1800,10 +2057,15 @@
                 case 'applyForCard': applyForCard(); break;
                 case 'connectSpotify': connectSpotify(); break;
                 case 'syncSpotify': syncSpotify(); break;
+                case 'connectLastfm': connectLastfm(); break;
+                case 'syncLastfm': syncLastfm(); break;
+                case 'disconnectLastfm': disconnectLastfm(); break;
                 case 'logout': logout(); break;
             }
         });
     </script>
+    <script defer src="/js/nav.js"></script>
+    <script defer src="/js/toast.js"></script>
 </body>
 
 </html>

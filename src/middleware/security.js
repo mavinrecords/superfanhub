@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const crypto = require('crypto');
 const { getDatabase } = require('../db/database');
 
 // General API rate limiter
@@ -96,6 +97,13 @@ function addRequestMetadata(req, res, next) {
     next();
 }
 
+// Attach a short request ID to every request for log correlation / audit trail
+function addRequestId(req, res, next) {
+    req.requestId = crypto.randomBytes(8).toString('hex');
+    res.setHeader('X-Request-Id', req.requestId);
+    next();
+}
+
 module.exports = {
     apiLimiter,
     validationLimiter,
@@ -103,5 +111,6 @@ module.exports = {
     checkSuspiciousActivity,
     requireFields,
     normalizeCardCode,
-    addRequestMetadata
+    addRequestMetadata,
+    addRequestId
 };

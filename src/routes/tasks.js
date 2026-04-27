@@ -9,6 +9,7 @@ const taskService = require('../services/taskService');
 const streakService = require('../services/streakService');
 const contributionService = require('../services/contributionService');
 const taskFraudService = require('../services/taskFraudService');
+const { runTransaction } = require('../db/database');
 const { requireUser } = require('../middleware/requireUser');
 
 // List available tasks (with user progress)
@@ -102,24 +103,24 @@ router.post('/:id/submit', requireUser, (req, res) => {
         const taskId = parseInt(req.params.id);
         const { proofType, proofData, proofUrl } = req.body;
 
-        // Fraud check
+        // Fraud check — block on medium severity and above
         const fraudCheck = taskFraudService.checkSubmissionFraud(req.user.id, taskId, proofData);
-        if (fraudCheck.flagged && fraudCheck.severity === 'critical') {
+        if (fraudCheck.flagged && ['medium', 'high', 'critical'].includes(fraudCheck.severity)) {
             return res.status(403).json({
                 error: 'Submission blocked due to suspicious activity',
                 flags: fraudCheck.flags
             });
         }
 
-        const result = taskService.submitTaskProof(req.user.id, taskId, {
-            proofType, proofData, proofUrl
+        // Atomically submit proof, record streak, and recalculate tier
+        const result = runTransaction(() => {
+            const r = taskService.submitTaskProof(req.user.id, taskId, {
+                proofType, proofData, proofUrl
+            });
+            streakService.recordDailyActivity(req.user.id);
+            contributionService.recalculateTier(req.user.id);
+            return r;
         });
-
-        // Record streak activity
-        streakService.recordDailyActivity(req.user.id);
-
-        // Recalculate tier
-        contributionService.recalculateTier(req.user.id);
 
         res.json(result);
     } catch (error) {
@@ -139,11 +140,13 @@ router.post('/:id/complete', requireUser, (req, res) => {
             return res.status(400).json({ error: 'This task requires proof submission' });
         }
 
-        const result = taskService.completeTask(req.user.id, taskId, 'self');
-
-        // Record streak
-        streakService.recordDailyActivity(req.user.id);
-        contributionService.recalculateTier(req.user.id);
+        // Atomically complete task, record streak, and recalculate tier
+        const result = runTransaction(() => {
+            const r = taskService.completeTask(req.user.id, taskId, 'self');
+            streakService.recordDailyActivity(req.user.id);
+            contributionService.recalculateTier(req.user.id);
+            return r;
+        });
 
         res.json(result);
     } catch (error) {

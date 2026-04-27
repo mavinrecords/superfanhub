@@ -11,12 +11,25 @@ async function init() {
 
     if (!existingAdmin) {
         const passwordHash = await bcrypt.hash('admin123', 12);
-        db.prepare(`
-      INSERT INTO admin_users (username, password_hash, role)
-      VALUES (?, ?, 'superadmin')
-    `).run('admin', passwordHash);
+
+        // Detect whether must_change_password column exists (added by migrate.js)
+        const cols = db.pragma('table_info(admin_users)').map(c => c.name);
+        const hasMustChangeColumn = cols.includes('must_change_password');
+
+        if (hasMustChangeColumn) {
+            db.prepare(`
+                INSERT INTO admin_users (username, password_hash, role, must_change_password)
+                VALUES (?, ?, 'superadmin', 1)
+            `).run('admin', passwordHash);
+        } else {
+            db.prepare(`
+                INSERT INTO admin_users (username, password_hash, role)
+                VALUES (?, ?, 'superadmin')
+            `).run('admin', passwordHash);
+        }
+
         console.log('Default admin user created (username: admin, password: admin123)');
-        console.log('⚠️  IMPORTANT: Change this password immediately in production!');
+        console.log('⚠️  IMPORTANT: You will be forced to change this password on first login.');
     }
 
     console.log('Database initialization complete');

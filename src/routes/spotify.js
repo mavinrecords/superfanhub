@@ -1,68 +1,47 @@
-// Spotify Routes — Pathfix OAuth Integration
-// Pathfix manages token storage, refresh, and proxied API calls.
-// /connect  → Redirect user to Pathfix OAuth connect URL
-// /callback → Pathfix posts back here (or redirects) after auth
-// /status   → Check if user has connected Spotify via Pathfix
-// /sync     → Fetch recent plays via Pathfix proxy, award points
-// /stats    → Return local streaming stats from DB
-// /disconnect → Remove Pathfix connection for this user
+// Spotify Routes — direct Spotify OAuth (no Pathfix).
+// Flow:
+//   /connect    → returns accounts.spotify.com authorization URL
+//   /callback   → exchanges code→tokens, verifies via /me, runs initial sync
+//   /status     → local DB check
+//   /verify     → live /me call, reconciles DB to reality
+//   /sync       → fetches recent plays, awards points
+//   /stats      → local streaming stats
+//   /disconnect → drops DB row (Spotify has no revocation endpoint)
 
 const express = require('express');
 const router = express.Router();
 const spotifyService = require('../services/spotifyService');
 const { requireUser } = require('../middleware/requireUser');
 
-/**
- * GET /api/spotify/connect
- * Returns the Pathfix OAuth URL — frontend redirects user there.
- */
-router.get('/connect', requireUser, (req, res) => {
-    try {
-        const authUrl = spotifyService.getAuthorizationUrl(req.user.id);
-        res.json({ authUrl });
-    } catch (error) {
-        console.error('Spotify connect error:', error);
-        res.status(500).json({ error: error.message });
-    }
-});
+// ─── SHARED POPUP-CLOSE HTML RENDERERS ────────────────────────────────────
+// All three /callback branches (success, explicit error, verification failure)
+// render a tiny popup page that posts a message to window.opener and closes.
+// Factored out to avoid triplicating the boilerplate.
 
-/**
- * GET /api/spotify/callback
- * Pathfix redirects back here after the user authorises Spotify.
- * Pathfix manages the token — we just redirect the user to the dashboard.
- */
-router.get('/callback', async (req, res) => {
-    const { userId, error } = req.query;
-
-    if (error) {
-        // Popup: send error to parent and close
-        return res.send(`<!DOCTYPE html><html><head><title>Spotify</title></head><body>
-            <script>
-                if (window.opener) {
-                    window.opener.postMessage({ type: 'spotify_error', error: ${JSON.stringify(error)} }, '*');
-                    window.close();
-                } else {
-                    window.location.href = '/dashboard?spotify_error=' + encodeURIComponent(${JSON.stringify(error)});
-                }
-            <\/script>
-        </body></html>`);
-    }
-
-    // Non-fatal first sync
-    if (userId) {
-        try {
-            const loyaltyCardService = require('../services/loyaltyCardService');
-            const card = loyaltyCardService.getLoyaltyCard(parseInt(userId));
-            if (card) {
-                await spotifyService.processStreamingHistory(parseInt(userId), card.tier);
-            }
-        } catch (e) {
-            console.error('Initial sync error (non-fatal):', e.message);
+function renderPopupError(message) {
+    const safe = String(message || 'Unknown error')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+    return `<!DOCTYPE html>
+<html>
+<head><title>Spotify</title></head>
+<body>
+    <span id="errdata" data-err="${safe}" style="display:none"></span>
+    <script>
+        var errMsg = document.getElementById('errdata').getAttribute('data-err');
+        if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({ type: 'spotify_error', error: errMsg }, '*');
+            setTimeout(function(){ window.close(); }, 400);
+        } else {
+            window.location.href = '/dashboard?spotify_error=' + encodeURIComponent(errMsg);
         }
-    }
+    <\/script>
+</body>
+</html>`;
+}
 
-    // Serve a page that closes the popup and notifies the opener
-    res.send(`<!DOCTYPE html>
+function renderPopupSuccess() {
+    return `<!DOCTYPE html>
 <html>
 <head>
     <title>Spotify Connected</title>
@@ -80,53 +59,90 @@ router.get('/callback', async (req, res) => {
     <p>Spotify Connected!</p>
     <small>Closing and returning to dashboard…</small>
     <script>
-        // Notify the parent dashboard window
         if (window.opener && !window.opener.closed) {
             window.opener.postMessage({ type: 'spotify_connected' }, '*');
-            setTimeout(() => window.close(), 800);
+            setTimeout(function(){ window.close(); }, 800);
         } else {
-            // Opened in same tab — just redirect
             window.location.href = '/dashboard?spotify_connected=1';
         }
     <\/script>
 </body>
-</html>`);
+</html>`;
+}
+
+// ─── ROUTES ─────────────────────────────────────────────────────────────────
+
+/**
+ * GET /api/spotify/connect
+ * Returns the Spotify OAuth URL for the current user. Frontend opens this URL
+ * in a popup. Spotify redirects back to /callback with ?code= and ?state=.
+ */
+router.get('/connect', requireUser, (req, res) => {
+    try {
+        const authUrl = spotifyService.getAuthorizationUrl(req.user.id);
+        res.json({ authUrl });
+    } catch (error) {
+        console.error('Spotify connect error:', error.message);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 /**
- * POST /api/spotify/pathfix-webhook
- * Pathfix Event Callback — Pathfix POSTs here when a user connects or disconnects Spotify.
- * Configure this URL in app.pathfix.com → Settings → Event Callback:
- *   http://localhost:3000/api/spotify/pathfix-webhook  (dev)
- *   https://yourdomain.com/api/spotify/pathfix-webhook (prod)
- *
- * Expected payload: { event: "connected"|"disconnected", user_id: "5", spotify_user_id: "...", display_name: "..." }
+ * GET /api/spotify/callback
+ * Spotify redirects here after user auth. Receives ?code= (success) or ?error= (failure).
+ *   success: verify state → exchange code for tokens → store → verify via /me → initial sync.
+ *   failure: render popup error page.
  */
-router.post('/pathfix-webhook', (req, res) => {
+router.get('/callback', async (req, res) => {
+    const { code, state, error } = req.query;
+
+    if (error) {
+        return res.send(renderPopupError(String(error)));
+    }
+
+    const mavinUserId = spotifyService.verifyState(state);
+    if (!mavinUserId) {
+        return res.send(renderPopupError('Invalid or missing OAuth state (possible CSRF or expired flow)'));
+    }
+
+    if (!code) {
+        return res.send(renderPopupError('Missing authorization code from Spotify'));
+    }
+
     try {
-        const { event, user_id, spotify_user_id, display_name } = req.body;
-        console.log('[Pathfix Webhook]', JSON.stringify(req.body));
+        // 1. Exchange short-lived code for access/refresh tokens.
+        const tokens = await spotifyService.exchangeCodeForTokens(String(code));
 
-        const mavinUserId = parseInt(user_id);
-        if (!mavinUserId) return res.status(400).json({ error: 'Missing user_id' });
+        // 2. Persist tokens.
+        spotifyService.storeTokens(mavinUserId, tokens);
 
-        if (event === 'connected' || event === 'spotify.connected' || !event) {
-            // Mark connected in our DB — no Pathfix API needed from here on
-            spotifyService.markConnected(mavinUserId, spotify_user_id, display_name);
-        } else if (event === 'disconnected' || event === 'spotify.disconnected') {
-            spotifyService.markDisconnected(mavinUserId);
+        // 3. Verify via /me — writes spotify_user_id + display_name.
+        const verified = await spotifyService.verifyConnection(mavinUserId);
+        if (!verified.connected) {
+            return res.send(renderPopupError('Verification failed — please try connecting again'));
         }
 
-        res.json({ ok: true });
+        // 4. Non-fatal initial sync (so dashboard shows fresh data immediately).
+        try {
+            const loyaltyCardService = require('../services/loyaltyCardService');
+            const card = loyaltyCardService.getLoyaltyCard(mavinUserId);
+            if (card) {
+                await spotifyService.processStreamingHistory(mavinUserId, card.tier);
+            }
+        } catch (e) {
+            console.error('Initial sync error (non-fatal):', e.message);
+        }
+
+        return res.send(renderPopupSuccess());
     } catch (err) {
-        console.error('[Pathfix Webhook] error:', err.message);
-        res.status(500).json({ error: err.message });
+        console.error('Spotify callback error:', err);
+        return res.send(renderPopupError(err.message || 'Connection failed'));
     }
 });
 
 /**
  * GET /api/spotify/status
- * Check if user has connected Spotify — reads from our local DB (fast, no Pathfix call).
+ * Fast local-DB check. Returns { connected: boolean }.
  */
 router.get('/status', requireUser, (req, res) => {
     try {
@@ -139,8 +155,23 @@ router.get('/status', requireUser, (req, res) => {
 });
 
 /**
+ * POST /api/spotify/verify
+ * Authoritative live check. Calls /me, reconciles spotify_connections to reality.
+ * Frontend polls this every 2s while the OAuth popup is open.
+ */
+router.post('/verify', requireUser, async (req, res) => {
+    try {
+        const result = await spotifyService.verifyConnection(req.user.id);
+        res.json(result);
+    } catch (err) {
+        console.error('Spotify verify error:', err.message);
+        res.status(500).json({ connected: false, error: 'Verification failed' });
+    }
+});
+
+/**
  * POST /api/spotify/sync
- * Fetch the user's recently played tracks through Pathfix, award points.
+ * Fetch recently played tracks, award points. Self-heals spotify_connections.
  */
 router.post('/sync', requireUser, async (req, res) => {
     try {
@@ -150,11 +181,16 @@ router.post('/sync', requireUser, async (req, res) => {
 
         const result = await spotifyService.processStreamingHistory(req.user.id, tier);
 
+        // Self-heal: a successful sync proves connection — bump updated_at.
+        try { spotifyService.touchConnected(req.user.id); } catch { }
+
         res.json({ success: true, ...result });
     } catch (error) {
-        console.error('Spotify sync error:', error);
+        console.error('Spotify sync error:', error.message);
 
-        if (error.message.includes('not connected') || error.message.includes('reconnect')) {
+        const msg = String(error.message || '');
+        if (msg.includes('not connected') || msg.includes('reconnect') || msg.includes('token expired')) {
+            try { spotifyService.markDisconnected(req.user.id); } catch { }
             return res.status(400).json({ error: 'Spotify not connected. Please reconnect.' });
         }
 
@@ -163,8 +199,53 @@ router.post('/sync', requireUser, async (req, res) => {
 });
 
 /**
+ * GET /api/spotify/top/artists?time_range=medium_term&limit=20
+ * Requires scope: user-top-read.
+ */
+router.get('/top/artists', requireUser, async (req, res) => {
+    try {
+        const timeRange = req.query.time_range || 'medium_term';
+        const limit = parseInt(req.query.limit, 10) || 20;
+        const data = await spotifyService.getTopArtists(req.user.id, timeRange, limit);
+        res.json(data);
+    } catch (err) {
+        console.error('Spotify top artists error:', err.message);
+        const msg = String(err.message || '');
+        if (msg.includes('not connected') || msg.includes('token expired') || msg.includes('reconnect')) {
+            return res.status(400).json({ error: 'Spotify not connected. Please reconnect.' });
+        }
+        if (msg.includes('403')) {
+            return res.status(403).json({ error: 'Spotify scope user-top-read not granted. Reconnect to re-authorize.' });
+        }
+        res.status(500).json({ error: 'Failed to fetch top artists' });
+    }
+});
+
+/**
+ * GET /api/spotify/following/mavin
+ * Returns { follows:[{spotify_artist_id,follows}], followedCount, totalMavinArtists }.
+ * Requires scope: user-follow-read.
+ */
+router.get('/following/mavin', requireUser, async (req, res) => {
+    try {
+        const data = await spotifyService.checkFollowsMavinArtists(req.user.id);
+        res.json(data);
+    } catch (err) {
+        console.error('Spotify following/mavin error:', err.message);
+        const msg = String(err.message || '');
+        if (msg.includes('not connected') || msg.includes('token expired') || msg.includes('reconnect')) {
+            return res.status(400).json({ error: 'Spotify not connected. Please reconnect.' });
+        }
+        if (msg.includes('403')) {
+            return res.status(403).json({ error: 'Spotify scope user-follow-read not granted. Reconnect to re-authorize.' });
+        }
+        res.status(500).json({ error: 'Failed to fetch following status' });
+    }
+});
+
+/**
  * GET /api/spotify/stats
- * Return streaming stats from local DB (fast, no Pathfix call needed).
+ * Local DB streaming stats — fast, no API call.
  */
 router.get('/stats', requireUser, (req, res) => {
     try {
@@ -178,12 +259,13 @@ router.get('/stats', requireUser, (req, res) => {
 
 /**
  * POST /api/spotify/disconnect
- * Tell Pathfix to remove this user's Spotify connection.
+ * Drops this user's DB row. Spotify has no token-revocation endpoint — users
+ * can manually revoke at spotify.com/account/apps if they want to force
+ * re-consent on next connect.
  */
-router.post('/disconnect', requireUser, async (req, res) => {
+router.post('/disconnect', requireUser, (req, res) => {
     try {
         spotifyService.markDisconnected(req.user.id);
-        await spotifyService.disconnectPathfix(req.user.id).catch(() => { });
         res.json({ success: true });
     } catch (error) {
         console.error('Spotify disconnect error:', error);

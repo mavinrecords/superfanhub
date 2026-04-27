@@ -4,7 +4,7 @@
 const express = require('express');
 const router = express.Router();
 const authService = require('../services/authService');
-const { requireUser } = require('../middleware/requireUser');
+const { requireUser, optionalUser } = require('../middleware/requireUser');
 
 // =============================================================
 // REGISTRATION
@@ -29,7 +29,16 @@ router.post('/register', async (req, res) => {
 
         const result = await authService.register(email, password, name, phone);
 
-        // TODO: Send verification email
+        // EMAIL VERIFICATION: token is at result.verificationToken
+        // Wire emailService.sendVerificationEmail() when SMTP is configured (SMTP_HOST in .env)
+        // try {
+        //     await emailService.sendVerificationEmail(result.email, result.verificationToken);
+        // } catch (emailErr) {
+        //     console.error('Verification email failed (non-fatal):', emailErr.message);
+        // }
+        if (result.verificationToken) {
+            console.log(`[Register] Verification token for ${email}: ${result.verificationToken} (configure SMTP to email this)`);
+        }
 
         res.status(201).json({
             success: true,
@@ -95,13 +104,27 @@ router.post('/login', async (req, res) => {
 // LOGOUT
 // =============================================================
 
-router.post('/logout', requireUser, (req, res) => {
+// Sign-out must always succeed even if the bearer token is expired/invalid —
+// otherwise the frontend's .finally() is the only thing clearing client state
+// and any 401 here just adds noise to the console. `optionalUser` attaches
+// req.userToken if present, but never 401s. We invalidate the DB-side session
+// row when we have the token, destroy the express session either way, and
+// clear the cookie client-side to defeat any CDN/proxy caching of the Set-Cookie.
+router.post('/logout', optionalUser, (req, res) => {
     try {
-        authService.logout(req.userToken);
+        if (req.userToken) {
+            try { authService.logout(req.userToken); } catch (_) { /* best-effort */ }
+        }
 
-        // Clear session
-        req.session.destroy();
+        if (req.session) {
+            req.session.destroy(() => {
+                res.clearCookie('connect.sid', { path: '/' });
+                res.json({ success: true, message: 'Logged out successfully' });
+            });
+            return;
+        }
 
+        res.clearCookie('connect.sid', { path: '/' });
         res.json({ success: true, message: 'Logged out successfully' });
 
     } catch (error) {
@@ -182,7 +205,16 @@ router.post('/password/reset-request', async (req, res) => {
 
         const result = authService.requestPasswordReset(email);
 
-        // TODO: Send password reset email with result.resetToken
+        // PASSWORD RESET EMAIL: token is at result.resetToken
+        // Wire emailService.sendPasswordResetEmail() when SMTP is configured (SMTP_HOST in .env)
+        // try {
+        //     await emailService.sendPasswordResetEmail(email, result.resetToken);
+        // } catch (emailErr) {
+        //     console.error('Reset email failed (non-fatal):', emailErr.message);
+        // }
+        if (result && result.resetToken) {
+            console.log(`[PasswordReset] Reset token for ${email}: ${result.resetToken} (configure SMTP to email this)`);
+        }
 
         res.json({
             success: true,
@@ -265,23 +297,26 @@ router.get('/stats', requireUser, (req, res) => {
         const db = getDatabase();
         const userId = req.user.id;
 
-        // Referral count
-        const referrals = db.prepare(
-            "SELECT COUNT(*) as count FROM referrals WHERE referrer_user_id = ? AND status = 'credited'"
-        ).get(userId) || { count: 0 };
+        // Referral count — join through users.email since referrals stores referrer_email
+        const referrals = db.prepare(`
+            SELECT COUNT(*) as count FROM referrals
+            WHERE referrer_email = (SELECT email FROM users WHERE id = ?)
+              AND status = 'completed'
+        `).get(userId) || { count: 0 };
 
         // Gift card count linked to user
         const giftCards = db.prepare(
             "SELECT COUNT(*) as count FROM gift_cards WHERE user_id = ?"
         ).get(userId) || { count: 0 };
 
-        // Monthly points (loyalty transactions this calendar month)
+        // Monthly points — loyalty_transactions stores email, not user_id; join through users
         const monthPoints = db.prepare(`
-            SELECT COALESCE(SUM(amount), 0) as total
-            FROM loyalty_transactions
-            WHERE user_id = ?
-              AND amount > 0
-              AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')
+            SELECT COALESCE(SUM(lt.amount), 0) as total
+            FROM loyalty_transactions lt
+            JOIN users u ON lt.email = u.email
+            WHERE u.id = ?
+              AND lt.amount > 0
+              AND strftime('%Y-%m', lt.created_at) = strftime('%Y-%m', 'now')
         `).get(userId) || { total: 0 };
 
         res.json({
@@ -291,11 +326,7 @@ router.get('/stats', requireUser, (req, res) => {
         });
     } catch (error) {
         console.error('Stats error:', error);
-        res.status(500).json({
-            referralCount: 0,
-            giftCardCount: 0,
-            monthlyPoints: 0
-        });
+        return res.status(500).json({ success: false, error: 'Failed to load user stats' });
     }
 });
 

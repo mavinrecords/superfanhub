@@ -3,7 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
   <meta name="description" content="Mavin SuperFan Hub - Join the ultimate fan community for Mavin Records artists">
   <title>SuperFan Hub | Mavin Records</title>
   <link rel="icon" type="image/png" href="/images/logo.png">
@@ -13,9 +14,11 @@
     rel="stylesheet">
   <link rel="stylesheet" href="/css/styles.css">
   <link rel="stylesheet" href="/css/home.css">
+  <link rel="stylesheet" href="/css/mobile.css">
 </head>
 
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
   <!-- Navigation -->
   <nav class="nav" id="nav">
     <div class="nav-logo">
@@ -48,7 +51,7 @@
   </div>
 
   <!-- Hero Section -->
-  <section class="hero">
+  <section class="hero" id="main" tabindex="-1">
     <div class="hero-content">
       <div class="hero-label">Mavin Records Fan Community</div>
       <h1 class="hero-title">
@@ -61,21 +64,13 @@
         and unlock exclusive rewards as a verified SuperFan.
       </p>
       <div class="hero-actions">
-        <a href="/register" class="btn btn-gold">Join the Inner Circle</a>
+        <a href="/register" class="btn btn-gold">Be a Mavin Super fan</a>
         <a href="#features" class="btn btn-outline">How It Works</a>
       </div>
     </div>
 
-    <div class="floating-artists">
-      <div class="artist-tag">Rema</div>
-      <div class="artist-tag">Ayra Starr</div>
-      <div class="artist-tag">Crayon</div>
-      <div class="artist-tag">Johnny Drille</div>
-      <div class="artist-tag">LADIPOE</div>
-      <div class="artist-tag">Magixx</div>
-      <div class="artist-tag">Bayanni</div>
-      <div class="artist-tag">Boy Spyce</div>
-    </div>
+    <!-- Floating artist tags are populated from /api/artists on page load -->
+    <div class="floating-artists" id="floating-artists"></div>
   </section>
 
   <!-- Features Section -->
@@ -178,26 +173,9 @@
     </div>
   </section>
 
-  <!-- Artists Marquee -->
+  <!-- Artists Marquee (names populated from /api/artists, duplicated 2× for infinite loop) -->
   <section class="artists" id="artists">
-    <div class="artists-marquee">
-      <span class="artist-name">Rema</span>
-      <span class="artist-name">Ayra Starr</span>
-      <span class="artist-name">Crayon</span>
-      <span class="artist-name">Johnny Drille</span>
-      <span class="artist-name">LADIPOE</span>
-      <span class="artist-name">Magixx</span>
-      <span class="artist-name">Bayanni</span>
-      <span class="artist-name">Boy Spyce</span>
-      <span class="artist-name">Rema</span>
-      <span class="artist-name">Ayra Starr</span>
-      <span class="artist-name">Crayon</span>
-      <span class="artist-name">Johnny Drille</span>
-      <span class="artist-name">LADIPOE</span>
-      <span class="artist-name">Magixx</span>
-      <span class="artist-name">Bayanni</span>
-      <span class="artist-name">Boy Spyce</span>
-    </div>
+    <div class="artists-marquee" id="artists-marquee"></div>
   </section>
 
   <!-- CTA Section -->
@@ -259,6 +237,31 @@
         // Redirect to dashboard if already logged in
         // window.location.href = '/dashboard';
       }
+
+      // Load artist roster from the single source of truth.
+      fetch('/api/artists')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(body => {
+          const artists = (body && body.data) || [];
+          const floating = document.getElementById('floating-artists');
+          const marquee = document.getElementById('artists-marquee');
+
+          artists.forEach(a => {
+            const tag = document.createElement('div');
+            tag.className = 'artist-tag';
+            tag.textContent = a.display_name;
+            floating && floating.appendChild(tag);
+          });
+
+          // Duplicate 2× so the CSS keyframes marquee loop animates seamlessly.
+          [...artists, ...artists].forEach(a => {
+            const s = document.createElement('span');
+            s.className = 'artist-name';
+            s.textContent = a.display_name;
+            marquee && marquee.appendChild(s);
+          });
+        })
+        .catch(err => console.warn('[index] Failed to load artists roster:', err));
     });
 
     function toggleMobileMenu() {

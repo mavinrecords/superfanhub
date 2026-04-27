@@ -380,6 +380,11 @@
     cursor: pointer;
 }
 
+/* Overlay hidden by default at every viewport; only shown on mobile when .open is toggled */
+.mobile-menu {
+    display: none;
+}
+
 /* Responsive */
 @media (max-width: 968px) {
     .nav {
@@ -423,9 +428,8 @@
         justify-content: center;
     }
 
-    /* Mobile menu overlay */
+    /* Mobile menu overlay (base display:none declared at top level) */
     .mobile-menu {
-        display: none;
         position: fixed;
         top: 0;
         left: 0;
@@ -476,11 +480,101 @@
     }
 }
 
+/* M1-7 — Narrow phone layout (iPhone SE / small Android) */
+@media (max-width: 480px) {
+    .nav {
+        padding: 16px 20px;
+    }
+
+    .nav-logo {
+        font-size: 1.25rem;
+    }
+
+    .nav-cta {
+        gap: 8px;
+    }
+
+    .nav-cta .btn {
+        padding: 10px 16px;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+
+    .hero {
+        padding: 88px 20px 48px;
+        text-align: left;
+    }
+
+    .hero-title {
+        font-size: clamp(2rem, 11vw, 2.75rem);
+        margin-bottom: 24px;
+    }
+
+    .hero-subtitle {
+        font-size: 1rem;
+        margin-bottom: 32px;
+    }
+
+    .hero-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .hero-actions .btn {
+        width: 100%;
+        padding: 14px 20px;
+    }
+
+    .features,
+    .artists,
+    .cta {
+        padding: 64px 20px;
+    }
+
+    .section-header {
+        margin-bottom: 48px;
+    }
+
+    .section-title {
+        font-size: 1.75rem;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .feature-card {
+        padding: 24px;
+    }
+
+    .artist-name {
+        font-size: 2.5rem;
+    }
+
+    .cta-title {
+        font-size: 1.75rem;
+    }
+
+    .cta-subtitle {
+        font-size: 1rem;
+    }
+
+    .cta-content .btn {
+        width: 100%;
+    }
+
+    .footer {
+        padding: 32px 20px calc(32px + env(safe-area-inset-bottom, 0));
+    }
+}
+
 /* Gift Card Quick Access */
 .gift-access {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0));
+    right: calc(24px + env(safe-area-inset-right, 0));
     z-index: 999;
 }
 

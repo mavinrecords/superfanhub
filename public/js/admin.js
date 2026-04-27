@@ -3,6 +3,28 @@
 let currentAdmin = null;
 let issuedCards = [];
 
+// =====================================================================
+// M3-1 — Skeleton row helper. Paints N placeholder rows with shimmering
+// `.skeleton` blocks while a fetch is pending; the existing render
+// functions overwrite the tbody.innerHTML on success or empty.
+// CSS: .skeleton / .skeleton-row in /css/mobile.css.
+// =====================================================================
+function paintSkeletonRows(tbodyId, rowCount, colCount) {
+    const tbody = typeof tbodyId === 'string'
+        ? document.getElementById(tbodyId)
+        : tbodyId;
+    if (!tbody) return;
+    let html = '';
+    for (let r = 0; r < rowCount; r++) {
+        html += '<tr class="skeleton-row" aria-hidden="true">';
+        for (let c = 0; c < colCount; c++) {
+            html += '<td><div class="skeleton skeleton-text"></div></td>';
+        }
+        html += '</tr>';
+    }
+    tbody.innerHTML = html;
+}
+
 // DOM Elements
 const loginScreen = document.getElementById('loginScreen');
 const adminDashboard = document.getElementById('adminDashboard');
@@ -186,12 +208,12 @@ function showDashboard() {
     loadStats();
 }
 
-// Page navigation
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-        const page = item.dataset.page;
-        showPage(page);
-    });
+// Page navigation (delegated so drawer clones in mobile nav also work)
+document.addEventListener('click', (e) => {
+    const item = e.target.closest('.nav-item[data-page]');
+    if (!item) return;
+    const page = item.dataset.page;
+    if (page) showPage(page);
 });
 
 // Button event listeners (to avoid CSP inline handler violations)
@@ -203,6 +225,9 @@ document.getElementById('copyCodeBtn')?.addEventListener('click', () => copyCode
 document.getElementById('downloadBulkCodesBtn')?.addEventListener('click', () => downloadBulkCodes());
 document.getElementById('issueAnotherBtn')?.addEventListener('click', () => resetIssueForm());
 document.getElementById('modalCloseBtn')?.addEventListener('click', () => closeModal());
+document.getElementById('importCsvBtn')?.addEventListener('click', () => document.getElementById('importCsvInput')?.click());
+document.getElementById('newCampaignBtn')?.addEventListener('click', () => showCreateCampaignModal());
+document.getElementById('closeCampaignModalBtn')?.addEventListener('click', () => closeCampaignModal());
 
 
 function showPage(page) {
@@ -216,10 +241,10 @@ function showPage(page) {
     document.getElementById(`${page}Page`).classList.remove('hidden');
 
     // Load data
-    // Load data
     if (page === 'dashboard') loadStats();
     if (page === 'cards') loadCards();
     if (page === 'transactions') loadTransactions();
+    if (page === 'admin-audit') loadAdminAudit({ resetPage: true });
     if (page === 'analytics') loadAnalytics();
     if (page === 'loyalty') loadLoyaltyStats();
     if (page === 'superfans') loadSuperFans();
@@ -227,14 +252,6 @@ function showPage(page) {
     if (page === 'campaigns') loadEngagementCampaigns();
 }
 
-// Load stats
-async function loadStats() {
-    // ... existing stats logic (could be improved to load Loyalty stats too)
-}
-
-// =============================================================
-// CAMPAIGNS & PROMOS
-// =============================================================
 // =============================================================
 // CAMPAIGNS & PROMOS
 // =============================================================
@@ -290,19 +307,33 @@ async function loadEngagementCampaigns() {
         const campaigns = await response.json();
 
         if (!campaigns || campaigns.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No campaigns found. Create one!</td></tr>';
+            // M3-5: empty-state with SVG illustration
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M3 11l18-5v12L3 14v-3z"/>
+                                <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+                            </svg>
+                            <div class="empty-state__title">No campaigns yet</div>
+                            <div class="empty-state__description">Create a campaign to start engaging your superfans.</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
             return;
         }
 
         tbody.innerHTML = campaigns.map(c => `
             <tr>
-                <td><strong>${c.title}</strong></td>
-                <td><span class="badge badge-info">${c.type}</span></td>
-                <td>${c.points} pts</td>
-                <td><span class="badge badge-${c.status === 'active' ? 'active' : 'frozen'}">${c.status}</span></td>
-                <td>${formatDate(c.starts_at) || '-'}</td>
-                <td>${formatDate(c.ends_at) || '-'}</td>
-                <td>
+                <td data-label="Title"><strong>${c.title}</strong></td>
+                <td data-label="Type"><span class="badge badge-info">${c.type}</span></td>
+                <td data-label="Points">${c.points} pts</td>
+                <td data-label="Status"><span class="badge badge-${c.status === 'active' ? 'active' : 'frozen'}">${c.status}</span></td>
+                <td data-label="Start Date">${formatDate(c.starts_at) || '-'}</td>
+                <td data-label="End Date">${formatDate(c.ends_at) || '-'}</td>
+                <td data-label="Actions">
                     <button class="btn btn-sm btn-secondary" onclick="alert('Edit not implemented yet')">Edit</button>
                     ${c.status === 'active'
                 ? `<button class="btn btn-sm btn-danger" onclick="toggleCampaignStatus('${c.id}', 'ended')">End</button>`
@@ -455,11 +486,11 @@ async function loadStats() {
         const tbody = document.getElementById('recentTransactions');
         tbody.innerHTML = data.recentTransactions.map(tx => `
       <tr>
-        <td>${formatDate(tx.performed_at)}</td>
-        <td class="font-mono">${tx.code_prefix}••••</td>
-        <td><span class="badge badge-${tx.type === 'redeem' ? 'value' : tx.type === 'issue' ? 'active' : 'discount'}">${tx.type}</span></td>
-        <td>${tx.amount ? `$${tx.amount.toFixed(2)}` : tx.discount_applied ? `$${tx.discount_applied.toFixed(2)}` : '-'}</td>
-        <td>${tx.performed_by}</td>
+        <td data-label="Time">${formatDate(tx.performed_at)}</td>
+        <td data-label="Card" class="font-mono">${tx.code_prefix}••••</td>
+        <td data-label="Type"><span class="badge badge-${tx.type === 'redeem' ? 'value' : tx.type === 'issue' ? 'active' : 'discount'}">${tx.type}</span></td>
+        <td data-label="Amount">${tx.amount ? `$${tx.amount.toFixed(2)}` : tx.discount_applied ? `$${tx.discount_applied.toFixed(2)}` : '-'}</td>
+        <td data-label="By">${tx.performed_by}</td>
       </tr>
     `).join('');
 
@@ -479,6 +510,9 @@ async function loadCards() {
     if (tier) params.append('tier', tier);
     if (cardType) params.append('cardType', cardType);
 
+    // M3-1: paint skeleton rows while the fetch is in flight.
+    paintSkeletonRows('cardsTableBody', 5, 9);
+
     try {
         const response = await fetch(`/api/admin/cards?${params}`, { credentials: 'same-origin' });
         const data = await response.json();
@@ -490,11 +524,18 @@ async function loadCards() {
 
         // Empty state per UI Contract
         if (!data.cards || data.cards.length === 0) {
+            // M3-5: empty-state with SVG illustration
             tbody.innerHTML = `
                 <tr>
                     <td colspan="9">
                         <div class="empty-state">
+                            <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect x="2" y="5" width="20" height="14" rx="2"/>
+                                <line x1="2" y1="10" x2="22" y2="10"/>
+                                <line x1="6" y1="15" x2="10" y2="15"/>
+                            </svg>
                             <div class="empty-state__title">No gift cards yet</div>
+                            <div class="empty-state__description">Issue your first card to start tracking redemptions.</div>
                             <button class="btn btn-primary" onclick="showPage('issue')">Issue First Card</button>
                         </div>
                     </td>
@@ -505,15 +546,15 @@ async function loadCards() {
 
         tbody.innerHTML = data.cards.map(card => `
       <tr class="card-row" data-card-id="${card.id}" data-card-code="${card.code_prefix}-****-****-****" style="cursor:pointer;">
-        <td>${card.id}</td>
-        <td class="font-mono">${card.code_prefix}••••</td>
-        <td><span class="badge badge-${card.tier}">${card.tier}</span></td>
-        <td><span class="badge badge-${card.card_type}">${card.card_type}</span></td>
-        <td>$${(card.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-        <td>${card.discount_percent > 0 ? `${card.discount_percent}%` : '-'}</td>
-        <td><span class="badge badge-${card.status}">${card.status}</span></td>
-        <td>${formatDate(card.issued_at)}</td>
-        <td>
+        <td data-label="ID">${card.id}</td>
+        <td data-label="Code" class="font-mono">${card.code_prefix}••••</td>
+        <td data-label="Tier"><span class="badge badge-${card.tier}">${card.tier}</span></td>
+        <td data-label="Type"><span class="badge badge-${card.card_type}">${card.card_type}</span></td>
+        <td data-label="Balance">$${(card.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+        <td data-label="Discount">${card.discount_percent > 0 ? `${card.discount_percent}%` : '-'}</td>
+        <td data-label="Status"><span class="badge badge-${card.status}">${card.status}</span></td>
+        <td data-label="Issued">${formatDate(card.issued_at)}</td>
+        <td data-label="Actions">
           ${card.status === 'active' ? `
             <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();freezeCard(${card.id})">Freeze</button>
             <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();revokeCard(${card.id})">Revoke</button>
@@ -543,6 +584,9 @@ async function loadTransactions() {
     const params = new URLSearchParams();
     if (type) params.append('type', type);
 
+    // M3-1: paint skeleton rows while the fetch is in flight.
+    paintSkeletonRows('transactionsTableBody', 5, 6);
+
     try {
         const response = await fetch(`/api/admin/transactions?${params}`, { credentials: 'same-origin' });
         const data = await response.json();
@@ -554,13 +598,13 @@ async function loadTransactions() {
                 : '-';
             return `
       <tr>
-        <td>${formatDate(tx.performed_at)}</td>
-        <td class="font-mono">${tx.code_prefix}••••</td>
-        <td><span class="badge badge-${tx.type === 'redeem' ? 'value' : tx.type === 'issue' ? 'active' : 'discount'}">${tx.type}</span></td>
-        <td>${tx.amount ? `$${tx.amount.toFixed(2)}` : tx.discount_applied ? `$${tx.discount_applied.toFixed(2)}` : '-'}</td>
-        <td>${balanceChange}</td>
-        <td>${tx.performed_by}</td>
-        <td class="text-muted">${tx.notes || '-'}</td>
+        <td data-label="Time">${formatDate(tx.performed_at)}</td>
+        <td data-label="Card" class="font-mono">${tx.code_prefix}••••</td>
+        <td data-label="Type"><span class="badge badge-${tx.type === 'redeem' ? 'value' : tx.type === 'issue' ? 'active' : 'discount'}">${tx.type}</span></td>
+        <td data-label="Amount">${tx.amount ? `$${tx.amount.toFixed(2)}` : tx.discount_applied ? `$${tx.discount_applied.toFixed(2)}` : '-'}</td>
+        <td data-label="Balance Change">${balanceChange}</td>
+        <td data-label="By">${tx.performed_by}</td>
+        <td data-label="Notes" class="text-muted">${tx.notes || '-'}</td>
       </tr>
     `}).join('');
 
@@ -568,6 +612,154 @@ async function loadTransactions() {
         console.error('Failed to load transactions:', error);
     }
 }
+
+// =============================================================
+// ADMIN AUDIT LOG (T0-6)
+// =============================================================
+const ADMIN_AUDIT_PAGE_SIZE = 50;
+let adminAuditOffset = 0;
+let adminAuditActionsLoaded = false;
+
+function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+async function loadAdminAuditActionsDropdown() {
+    if (adminAuditActionsLoaded) return;
+    try {
+        const res = await fetch('/api/admin/audit-log/actions', { credentials: 'same-origin' });
+        if (!res.ok) return;
+        const actions = await res.json();
+        const select = document.getElementById('adminAuditActionFilter');
+        if (!select) return;
+        // Preserve the "All Actions" default option
+        select.innerHTML = '<option value="">All Actions</option>' +
+            actions.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+        adminAuditActionsLoaded = true;
+    } catch (err) {
+        console.error('Failed to load audit actions:', err);
+    }
+}
+
+async function loadAdminAudit({ resetPage = false } = {}) {
+    if (resetPage) adminAuditOffset = 0;
+    loadAdminAuditActionsDropdown();
+
+    const tbody = document.getElementById('adminAuditTableBody');
+    if (!tbody) return;
+    // M3-1: skeleton rows feel less jarring than a single "Loading..." row.
+    paintSkeletonRows(tbody, 6, 7);
+
+    const action = document.getElementById('adminAuditActionFilter')?.value || '';
+    const entityType = document.getElementById('adminAuditEntityFilter')?.value || '';
+    const since = document.getElementById('adminAuditSinceFilter')?.value || '';
+    const until = document.getElementById('adminAuditUntilFilter')?.value || '';
+
+    const params = new URLSearchParams();
+    params.set('limit', ADMIN_AUDIT_PAGE_SIZE);
+    params.set('offset', adminAuditOffset);
+    if (action) params.set('action', action);
+    if (entityType) params.set('entityType', entityType);
+    if (since) params.set('since', since);
+    if (until) params.set('until', until);
+
+    try {
+        const res = await fetch(`/api/admin/audit-log?${params.toString()}`, { credentials: 'same-origin' });
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Failed to load audit log.</td></tr>';
+            return;
+        }
+        const { rows, total, limit, offset } = await res.json();
+
+        if (!rows.length) {
+            // M3-5: empty-state with search SVG illustration
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <circle cx="11" cy="11" r="7"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <div class="empty-state__title">No audit entries</div>
+                            <div class="empty-state__description">No entries match the current filter. Try widening the date range.</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else {
+            tbody.innerHTML = rows.map(r => {
+                // M2-3: collapse the JSON payload into a native <details>
+                // disclosure so it doesn't dominate the row on mobile and
+                // gets free a11y semantics (VoiceOver: "summary, collapsed").
+                const detailsStr = r.details
+                    ? `<details class="audit-details">
+                        <summary>View payload</summary>
+                        <pre><code>${escapeHtml(JSON.stringify(r.details, null, 2))}</code></pre>
+                       </details>`
+                    : '<span class="text-muted">—</span>';
+                return `
+                    <tr>
+                        <td data-label="Time">${formatDate(r.created_at)}</td>
+                        <td data-label="Admin">${escapeHtml(r.admin_username || `id:${r.admin_id ?? '—'}`)}</td>
+                        <td data-label="Action"><span class="badge badge-discount">${escapeHtml(r.action)}</span></td>
+                        <td data-label="Entity">${escapeHtml(r.entity_type || '—')}</td>
+                        <td data-label="Entity ID" class="font-mono">${escapeHtml(r.entity_id || '—')}</td>
+                        <td data-label="Details" style="max-width:320px;">${detailsStr}</td>
+                        <td data-label="IP" class="text-muted font-mono" style="font-size:0.8rem;">${escapeHtml(r.ip_address || '—')}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        const totalEl = document.getElementById('adminAuditTotalCount');
+        if (totalEl) totalEl.textContent = total ? `${total.toLocaleString()} total` : '';
+        const info = document.getElementById('adminAuditPageInfo');
+        if (info) {
+            const from = total === 0 ? 0 : offset + 1;
+            const to = Math.min(offset + rows.length, total);
+            info.textContent = `${from}–${to} of ${total}`;
+        }
+        const prev = document.getElementById('adminAuditPrevBtn');
+        const next = document.getElementById('adminAuditNextBtn');
+        if (prev) prev.disabled = offset === 0;
+        if (next) next.disabled = offset + rows.length >= total;
+
+        // M2-9 — announce filter result count for screen readers.
+        const sr = document.getElementById('admin-audit-sr');
+        if (sr) {
+            sr.textContent = total === 0
+                ? 'No audit entries match the current filter.'
+                : `Showing ${rows.length} of ${total.toLocaleString()} audit ${total === 1 ? 'entry' : 'entries'}.`;
+        }
+    } catch (err) {
+        console.error('Failed to load admin audit log:', err);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Failed to load audit log.</td></tr>';
+    }
+}
+
+document.getElementById('applyAdminAuditFiltersBtn')?.addEventListener('click', () => loadAdminAudit({ resetPage: true }));
+document.getElementById('resetAdminAuditFiltersBtn')?.addEventListener('click', () => {
+    document.getElementById('adminAuditActionFilter').value = '';
+    document.getElementById('adminAuditEntityFilter').value = '';
+    document.getElementById('adminAuditSinceFilter').value = '';
+    document.getElementById('adminAuditUntilFilter').value = '';
+    loadAdminAudit({ resetPage: true });
+});
+document.getElementById('adminAuditPrevBtn')?.addEventListener('click', () => {
+    adminAuditOffset = Math.max(0, adminAuditOffset - ADMIN_AUDIT_PAGE_SIZE);
+    loadAdminAudit();
+});
+document.getElementById('adminAuditNextBtn')?.addEventListener('click', () => {
+    adminAuditOffset += ADMIN_AUDIT_PAGE_SIZE;
+    loadAdminAudit();
+});
 
 // Card type change handler
 document.getElementById('issueType').addEventListener('change', (e) => {
@@ -827,7 +1019,7 @@ async function showCardDetails(id, code) {
             <div class="gift-card-display card-shimmer" style="background: linear-gradient(145deg, #1a1a1a 0%, #0d0d0d 100%); aspect-ratio: 1.2 / 1; display: flex; flex-direction: column; justify-content: space-between; padding: 28px; border-radius: 16px; border: 1px solid rgba(162, 129, 46, 0.3);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                     <div>
-                        <div class="gift-card-tier" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: #A2812E; margin-bottom: 8px;">${card.tier}</div>
+                        <div class="gift-card-tier" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent-text, var(--accent)); margin-bottom: 8px;">${card.tier}</div>
                         <div style="font-size: 0.8rem; color: #666; text-transform: capitalize;">${card.card_type} Card</div>
                     </div>
                     <div style="text-align: right;">
@@ -839,7 +1031,7 @@ async function showCardDetails(id, code) {
                 <div style="text-align: center; padding: 16px 0;">
                     <div class="gift-card-balance" style="font-size: 2.5rem; font-weight: 700; color: #10b981; margin-bottom: 8px;">$${(card.current_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     ${card.card_type === 'discount' || card.card_type === 'hybrid' ? `
-                        <div style="font-size: 1.1rem; color: #A2812E; font-weight: 600;">${card.discount_percent}% OFF</div>
+                        <div style="font-size: 1.1rem; color: var(--accent-text, var(--accent)); font-weight: 600;">${card.discount_percent}% OFF</div>
                         <div style="font-size: 0.75rem; color: #666; margin-top: 4px;">${card.discount_uses_remaining === null ? 'Unlimited uses' : `${card.discount_uses_remaining} uses left`}</div>
                     ` : ''}
                 </div>
@@ -1089,6 +1281,9 @@ async function loadSuperFanUsers() {
     const search = document.getElementById('superfanSearch')?.value || '';
     const tier = document.getElementById('superfanTierFilter')?.value || '';
 
+    // M3-1: skeleton rows during fetch.
+    paintSkeletonRows(tbody, 5, 8);
+
     try {
         const params = new URLSearchParams();
         if (search) params.set('search', search);
@@ -1098,20 +1293,36 @@ async function loadSuperFanUsers() {
         const data = await response.json();
 
         if (data.users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);">No users found</td></tr>';
+            // M3-5: empty-state with people SVG illustration
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            <div class="empty-state__title">No users found</div>
+                            <div class="empty-state__description">Adjust the search or tier filter to find users.</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
             return;
         }
 
         tbody.innerHTML = data.users.map(user => `
             <tr>
-                <td><strong>${escapeHtml(user.name)}</strong></td>
-                <td>${escapeHtml(user.email)}</td>
-                <td>${user.card_number ? `<code style="font-size:0.75rem;">${user.card_number}</code>` : '<span style="color:var(--text-muted);">—</span>'}</td>
-                <td>${user.tier ? `<span class="tier-badge tier-${user.tier}">${user.tier}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
-                <td>${user.points != null ? user.points.toLocaleString() : '—'}</td>
-                <td>${user.card_status ? `<span class="status-badge status-${user.card_status}">${user.card_status}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
-                <td>${new Date(user.created_at).toLocaleDateString()}</td>
-                <td>
+                <td data-label="User"><strong>${escapeHtml(user.name)}</strong></td>
+                <td data-label="Email">${escapeHtml(user.email)}</td>
+                <td data-label="Card #">${user.card_number ? `<code style="font-size:0.75rem;">${user.card_number}</code>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td data-label="Tier">${user.tier ? `<span class="tier-badge tier-${user.tier}">${user.tier}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td data-label="Points">${user.points != null ? user.points.toLocaleString() : '—'}</td>
+                <td data-label="Status">${user.card_status ? `<span class="status-badge status-${user.card_status}">${user.card_status}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
+                <td data-label="Joined">${new Date(user.created_at).toLocaleDateString()}</td>
+                <td data-label="Actions">
                     <button class="btn btn-sm btn-secondary" onclick="viewSuperFanDetail(${user.id})">View</button>
                 </td>
             </tr>
@@ -1138,12 +1349,12 @@ async function loadLeaderboard() {
             <div style="display:flex;flex-direction:column;gap:8px;">
                 ${data.map((item, index) => `
                     <div style="display:flex;align-items:center;padding:12px;background:rgba(255,255,255,0.03);border-radius:4px;">
-                        <div style="width:30px;font-weight:700;color:${index < 3 ? '#A2812E' : '#888'};">#${index + 1}</div>
+                        <div style="width:30px;font-weight:700;color:${index < 3 ? 'var(--accent-text, var(--accent))' : 'var(--text-muted)'};">#${index + 1}</div>
                         <div style="flex:1;">
                             <div style="font-weight:500;">${escapeHtml(item.name || 'Unknown')}</div>
                             <div style="font-size:0.75rem;color:var(--text-muted);">${item.tier || 'bronze'}</div>
                         </div>
-                        <div style="font-weight:700;color:#A2812E;">${(item.lifetime_points || 0).toLocaleString()} pts</div>
+                        <div style="font-weight:700;color:var(--accent-text, var(--accent));">${(item.lifetime_points || 0).toLocaleString()} pts</div>
                     </div>
                 `).join('')}
             </div>
@@ -1178,7 +1389,7 @@ async function viewSuperFanDetail(userId) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
                     <div>
                         <div class="text-muted" style="font-size:0.75rem;margin-bottom:4px;">Points</div>
-                        <div style="font-size:1.5rem;font-weight:700;color:#A2812E;">${(user.points || 0).toLocaleString()}</div>
+                        <div style="font-size:1.5rem;font-weight:700;color:var(--accent-text, var(--accent));">${(user.points || 0).toLocaleString()}</div>
                     </div>
                     <div>
                         <div class="text-muted" style="font-size:0.75rem;margin-bottom:4px;">Lifetime</div>

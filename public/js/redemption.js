@@ -21,6 +21,11 @@ function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
+    // M0-6: ARIA roles so screen readers announce toasts. Errors are
+    // assertive (interrupt); other types are polite (queue at next pause).
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    toast.setAttribute('aria-atomic', 'true');
 
     const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
 

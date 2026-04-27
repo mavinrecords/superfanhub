@@ -35,6 +35,19 @@ router.get('/my', requireUser, (req, res) => {
     }
 });
 
+// List all campaigns (Admin)
+// IMPORTANT: This route MUST be declared before /:id to avoid Express matching
+// "manage" as a campaign ID parameter.
+router.get('/manage', requireAdmin, (req, res) => {
+    try {
+        const campaigns = campaignService.listCampaigns({});
+        res.json(campaigns);
+    } catch (error) {
+        console.error('Admin list campaigns error:', error);
+        res.status(500).json({ error: 'Failed to list campaigns' });
+    }
+});
+
 // Get campaign details
 router.get('/:id', requireUser, (req, res) => {
     try {
@@ -77,17 +90,6 @@ router.post('/:id/complete', requireUser, (req, res) => {
 // =============================================================
 // ADMIN ROUTES
 // =============================================================
-
-// List all campaigns (Admin)
-router.get('/manage', requireAdmin, (req, res) => {
-    try {
-        const campaigns = campaignService.listCampaigns({});
-        res.json(campaigns);
-    } catch (error) {
-        console.error('Admin list campaigns error:', error);
-        res.status(500).json({ error: 'Failed to list campaigns' });
-    }
-});
 
 // Create campaign
 router.post('/',

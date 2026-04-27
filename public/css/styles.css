@@ -16,6 +16,12 @@
   --accent-hover: #c4a03a;
   --accent-muted: rgba(162, 129, 46, 0.2);
   --accent-subtle: rgba(162, 129, 46, 0.1);
+  /* M0-8: Lighter gold reserved for *text on dark surfaces*. The base
+     --accent (#A2812E) holds 5.86:1 vs #000 (passes AA body, AAA large), but
+     drops below 4.5:1 on lighter surfaces like #1a1a1a. Use --accent-text
+     wherever gold is painted as text on a dark surface. Keep --accent for
+     backgrounds, borders, and icons. */
+  --accent-text: #d0a84a;
 
 
   /* Semantic Colors */
@@ -24,10 +30,28 @@
   --warning: #f59e0b;
   --info: #3b82f6;
 
+  /* M3-8: Semantic *text* tokens. The base --success/--error/--warning/--info
+     are tuned for icons, fills, and borders. These aliases are what alert
+     bodies, badges, and status text reference. Today they happen to equal
+     the base semantic colors because every measured pair on a tinted-alpha
+     surface (rgba(...,0.10) / rgba(...,0.15) over #000) clears 4.5:1 — see
+     audit table at top of mobile.css. Keeping a separate alias makes future
+     palette tweaks cheap. */
+  --accent-success: var(--success);
+  --accent-danger: var(--error);
+  --accent-warning: var(--warning);
+  --accent-info: var(--info);
+  /* Purple accent used by .badge-value (rgba(124,58,237,0.15) on #000).
+     #a78bfa = 7.06:1 on that tinted surface, comfortably AA. */
+  --accent-secondary: #a78bfa;
+
   /* Text Hierarchy - High Contrast */
   --text-primary: #ffffff;
   --text-secondary: #adb5bb;
-  --text-muted: #666666;
+  /* M3-8: Lifted from #666666 (3.03–3.66:1 — failed body 4.5:1 on every
+     dark surface) to #8a8a8a (5.04–6.08:1 — passes body AA on every dark
+     surface, still visibly muted vs --text-secondary). */
+  --text-muted: #8a8a8a;
 
   /* Borders - Subtle */
   --border: rgba(255, 255, 255, 0.1);
@@ -74,6 +98,10 @@
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  /* M0-10: Tells browser UA widgets (scrollbars, native form controls,
+     date pickers) to use dark-mode defaults. Pairs with the
+     <meta name="theme-color" content="#000000"> on each page. */
+  color-scheme: dark;
 }
 
 body {

@@ -16,10 +16,9 @@ function requireUser(req, res, next) {
         token = req.session.userToken;
     }
 
-    // Fallback to query param (for OAuth callbacks)
-    if (!token && req.query.token) {
-        token = req.query.token;
-    }
+    // SECURITY: do NOT accept tokens via query string here — they leak into
+    // server logs, proxies, and browser history. OAuth callback routes that
+    // need this should opt-in via `requireUserFromQuery` below.
 
     if (!token) {
         return res.status(401).json({ error: 'Authentication required' });
@@ -35,6 +34,24 @@ function requireUser(req, res, next) {
     req.user = user;
     req.userToken = token;
 
+    next();
+}
+
+/**
+ * OAuth callback variant — accepts token via query string only.
+ * Use ONLY on dedicated OAuth callback routes; never on general API endpoints.
+ */
+function requireUserFromQuery(req, res, next) {
+    const token = req.query.token;
+    if (!token) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+    const user = authService.validateSession(token);
+    if (!user) {
+        return res.status(401).json({ error: 'Invalid or expired session' });
+    }
+    req.user = user;
+    req.userToken = token;
     next();
 }
 
@@ -77,6 +94,7 @@ function requireVerified(req, res, next) {
 
 module.exports = {
     requireUser,
+    requireUserFromQuery,
     optionalUser,
     requireVerified
 };

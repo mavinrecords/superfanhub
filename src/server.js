@@ -3,8 +3,9 @@ const express = require('express');
 const session = require('express-session');
 const helmet = require('helmet');
 const path = require('path');
-const { initializeDatabase } = require('./db/database');
+const { initializeDatabase, getDatabase } = require('./db/database');
 const { seedAdminIfNeeded } = require('./db/seedAdmin');
+const SqliteStore = require('better-sqlite3-session-store')(session);
 const { apiLimiter, addRequestMetadata, addRequestId } = require('./middleware/security');
 const { blockUntilPasswordChanged } = require('./middleware/auth');
 const cardsRoutes = require('./routes/cards');
@@ -63,14 +64,35 @@ app.use(helmet({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session management
+// Trust the platform's reverse proxy in production (Render, Fly, nginx, etc.).
+// Without this, Express thinks the request is HTTP — even though the edge served
+// HTTPS — and express-session refuses to send `Set-Cookie` when `secure: true`.
+// That's the classic "login succeeds but next request is 401" bug on Render.
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
+// Warn loudly if SESSION_SECRET is at the default in production.
+if (process.env.NODE_ENV === 'production' && !process.env.SESSION_SECRET) {
+    console.warn('⚠️  SESSION_SECRET is not set in production. Sessions will be insecure.');
+    console.warn('   Generate one with: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"');
+}
+
+// Session management — SQLite-backed so sessions survive process restarts
+// (Render free-tier cold starts, redeploys, etc.). MemoryStore would lose
+// every session on every restart.
 app.use(session({
+    store: new SqliteStore({
+        client: getDatabase(),
+        expired: { clear: true, intervalMs: 15 * 60 * 1000 } // sweep every 15 min
+    }),
     secret: process.env.SESSION_SECRET || 'superfan-hub-secret-change-in-production',
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
+        sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     }
 }));

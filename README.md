@@ -176,6 +176,19 @@ This is a **stateful, long-lived Node process**. It is not compatible with serve
 
 Recommended: **Render** (Web Service + 1 GB persistent disk on `src/db/`), **Fly.io** (with a volume), or any VPS. Free-tier cold starts will pause `node-cron` schedulers.
 
+### Node version
+
+Pinned to **Node 22 LTS** via `.nvmrc` and `engines.node`. `better-sqlite3@9.6.0` does not have prebuilt binaries for Node 23+ and its source-build fails against the V8 API in those versions. If your platform respects neither file, set `NODE_VERSION=22` as an env var.
+
+### Render-specific setup
+
+1. New → Web Service → connect repo
+2. Build command: `npm install`
+3. Start command: `npm start`
+4. Add a **Persistent Disk** mounted at `/opt/render/project/src/src/db` (1 GB is plenty)
+5. Set env vars from `.env.example`
+6. After first deploy, open the Render **Shell** tab and run `npm run init-db` once — this seeds the default admin user (`admin` / `admin123`, force-rotated on first login). The schema itself is created automatically on boot.
+
 ---
 
 ## License

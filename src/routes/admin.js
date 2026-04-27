@@ -14,6 +14,7 @@ const squadService = require('../services/squadService');
 const taskFraudService = require('../services/taskFraudService');
 const contributionService = require('../services/contributionService');
 const proofService = require('../services/proofService');
+const campaignService = require('../services/campaignService');
 const { logAdminAction, getRecentActions, getDistinctActions } = require('../services/adminAuditService');
 const { requireAdminRole } = require('../middleware/requireAdminRole');
 
@@ -950,6 +951,185 @@ router.post('/squads/:id/missions', requireAdmin, (req, res) => {
         res.status(201).json(mission);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create squad mission' });
+    }
+});
+
+// List squads (admin view — includes inactive)
+router.get('/squads', requireAdmin, (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const offset = parseInt(req.query.offset) || 0;
+        res.json(squadService.listSquadsAdmin({ limit, offset }));
+    } catch (error) {
+        console.error('List squads error:', error);
+        res.status(500).json({ error: 'Failed to list squads' });
+    }
+});
+
+// Squad detail (with members + missions)
+router.get('/squads/:id', requireAdmin, (req, res) => {
+    try {
+        const squad = squadService.getSquadById(parseInt(req.params.id));
+        if (!squad) return res.status(404).json({ error: 'Squad not found' });
+        res.json(squad);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to load squad' });
+    }
+});
+
+// Update squad
+router.put('/squads/:id', requireAdmin, (req, res) => {
+    try {
+        const squad = squadService.updateSquad(parseInt(req.params.id), req.body);
+        logAdminAction(req, 'UPDATE_SQUAD', 'squad', req.params.id, { changes: req.body });
+        res.json(squad);
+    } catch (error) {
+        console.error('Update squad error:', error);
+        res.status(500).json({ error: 'Failed to update squad' });
+    }
+});
+
+// Delete squad (superadmin)
+router.delete('/squads/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const snapshot = squadService.deleteSquad(parseInt(req.params.id));
+        logAdminAction(req, 'DELETE_SQUAD', 'squad', req.params.id, {
+            deleted_row: snapshot || null
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete squad error:', error);
+        res.status(500).json({ error: 'Failed to delete squad' });
+    }
+});
+
+// Remove squad member
+router.delete('/squads/:id/members/:userId', requireAdmin, (req, res) => {
+    try {
+        const snapshot = squadService.removeSquadMember(
+            parseInt(req.params.id), parseInt(req.params.userId)
+        );
+        logAdminAction(req, 'REMOVE_SQUAD_MEMBER', 'squad', req.params.id, {
+            user_id: parseInt(req.params.userId),
+            removed_member: snapshot || null
+        });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to remove member' });
+    }
+});
+
+// Set squad member role
+router.put('/squads/:id/members/:userId/role', requireAdmin, (req, res) => {
+    try {
+        const member = squadService.setSquadMemberRole(
+            parseInt(req.params.id), parseInt(req.params.userId), req.body.role
+        );
+        logAdminAction(req, 'SET_SQUAD_MEMBER_ROLE', 'squad', req.params.id, {
+            user_id: parseInt(req.params.userId), role: req.body.role
+        });
+        res.json(member);
+    } catch (error) {
+        console.error('Set role error:', error);
+        res.status(500).json({ error: error.message || 'Failed to set role' });
+    }
+});
+
+// ─── ENGAGEMENT CAMPAIGN MANAGEMENT (Tier 2) ────────────────
+// Note: existing /campaigns POST creates promo card batches.
+// These endpoints manage engagement campaigns.
+
+// List engagement campaigns
+router.get('/engagement-campaigns', requireAdmin, (req, res) => {
+    try {
+        const { status, type, limit, offset } = req.query;
+        const campaigns = campaignService.listCampaigns({
+            status, type,
+            limit: parseInt(limit) || 50,
+            offset: parseInt(offset) || 0
+        });
+        res.json(campaigns);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to list campaigns' });
+    }
+});
+
+// Update engagement campaign
+router.put('/engagement-campaigns/:id', requireAdmin, (req, res) => {
+    try {
+        const campaign = campaignService.updateCampaign(parseInt(req.params.id), req.body);
+        logAdminAction(req, 'UPDATE_CAMPAIGN', 'campaign', req.params.id, {
+            changes: req.body
+        });
+        res.json(campaign);
+    } catch (error) {
+        console.error('Update campaign error:', error);
+        res.status(500).json({ error: 'Failed to update campaign' });
+    }
+});
+
+// Delete engagement campaign (superadmin)
+router.delete('/engagement-campaigns/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const snapshot = campaignService.deleteCampaign(parseInt(req.params.id));
+        logAdminAction(req, 'DELETE_CAMPAIGN', 'campaign', req.params.id, {
+            deleted_row: snapshot || null
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete campaign error:', error);
+        res.status(500).json({ error: 'Failed to delete campaign' });
+    }
+});
+
+// ─── REWARD DELETE + REDEMPTION FULFILLMENT (Tier 2) ────────
+
+// Delete reward (superadmin)
+router.delete('/rewards/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const snapshot = rewardCatalogService.deleteReward(parseInt(req.params.id));
+        logAdminAction(req, 'DELETE_REWARD', 'reward', req.params.id, {
+            deleted_row: snapshot || null
+        });
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete reward error:', error);
+        res.status(500).json({ error: 'Failed to delete reward' });
+    }
+});
+
+// List reward redemptions (paginated, with status filter)
+router.get('/rewards/redemptions', requireAdmin, (req, res) => {
+    try {
+        const { status, limit, offset } = req.query;
+        const redemptions = rewardCatalogService.listRedemptions({
+            status,
+            limit: parseInt(limit) || 50,
+            offset: parseInt(offset) || 0
+        });
+        res.json(redemptions);
+    } catch (error) {
+        console.error('List redemptions error:', error);
+        res.status(500).json({ error: 'Failed to list redemptions' });
+    }
+});
+
+// Mark redemption fulfilled
+router.post('/rewards/redemptions/:id/fulfill', requireAdmin, (req, res) => {
+    try {
+        const result = rewardCatalogService.fulfillRedemption(
+            parseInt(req.params.id),
+            req.body?.fulfillment_data ?? req.body ?? {}
+        );
+        logAdminAction(req, 'FULFILL_REDEMPTION', 'reward_redemption', req.params.id, {
+            fulfillment_data: req.body || null,
+            user_id: result?.user_id ?? null,
+            reward_id: result?.reward_id ?? null
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Fulfill redemption error:', error);
+        res.status(500).json({ error: 'Failed to fulfill redemption' });
     }
 });
 

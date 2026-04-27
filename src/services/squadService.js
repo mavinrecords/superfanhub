@@ -162,8 +162,85 @@ function createSquadMission({ squadId, taskId, targetCompletions, bonusPoints })
     return db.prepare('SELECT * FROM squad_missions WHERE id = ?').get(result.lastInsertRowid);
 }
 
+// ─── ADMIN CRUD EXTENSIONS (Tier 2) ─────────────────────────────────
+
+/**
+ * Update a squad
+ */
+function updateSquad(id, updates) {
+    const db = getDatabase();
+    const allowed = ['name', 'artist_id', 'artist_name', 'description', 'max_members', 'leader_user_id', 'is_active'];
+    const fields = [];
+    const values = [];
+    for (const [key, value] of Object.entries(updates)) {
+        if (allowed.includes(key)) {
+            fields.push(`${key} = ?`);
+            values.push(value);
+        }
+    }
+    if (fields.length === 0) return getSquadById(id);
+    fields.push("updated_at = datetime('now')");
+    values.push(id);
+    db.prepare(`UPDATE squads SET ${fields.join(', ')} WHERE id = ?`).run(...values);
+    return getSquadById(id);
+}
+
+/**
+ * Delete a squad. squad_members and squad_missions cascade automatically
+ * via FK ON DELETE CASCADE in schema. Returns snapshot for audit trail.
+ */
+function deleteSquad(id) {
+    const db = getDatabase();
+    const snapshot = getSquadById(id);
+    db.prepare('DELETE FROM squad_missions WHERE squad_id = ?').run(id);
+    db.prepare('DELETE FROM squads WHERE id = ?').run(id);
+    return snapshot;
+}
+
+/**
+ * Remove a single member from a squad
+ */
+function removeSquadMember(squadId, userId) {
+    const db = getDatabase();
+    const snapshot = db.prepare(
+        'SELECT sm.*, u.email FROM squad_members sm JOIN users u ON sm.user_id = u.id WHERE sm.squad_id = ? AND sm.user_id = ?'
+    ).get(squadId, userId);
+    db.prepare('DELETE FROM squad_members WHERE squad_id = ? AND user_id = ?').run(squadId, userId);
+    return snapshot;
+}
+
+/**
+ * Set a member's role within a squad
+ */
+function setSquadMemberRole(squadId, userId, role) {
+    const db = getDatabase();
+    if (!['leader', 'member'].includes(role)) {
+        throw new Error('Invalid role; must be leader or member');
+    }
+    db.prepare('UPDATE squad_members SET role = ? WHERE squad_id = ? AND user_id = ?')
+        .run(role, squadId, userId);
+    return db.prepare('SELECT * FROM squad_members WHERE squad_id = ? AND user_id = ?').get(squadId, userId);
+}
+
+/**
+ * List squads for admin with members count + leader info — no is_active filter.
+ */
+function listSquadsAdmin({ limit = 100, offset = 0 } = {}) {
+    const db = getDatabase();
+    return db.prepare(`
+        SELECT s.*,
+            (SELECT COUNT(*) FROM squad_members WHERE squad_id = s.id) as member_count,
+            (SELECT u.name FROM users u WHERE u.id = s.leader_user_id) as leader_name
+        FROM squads s
+        ORDER BY s.created_at DESC LIMIT ? OFFSET ?
+    `).all(limit, offset);
+}
+
 module.exports = {
     createSquad, getSquadById, joinSquad, leaveSquad,
     getUserSquads, listSquads, recordSquadContribution,
-    createSquadMission
+    createSquadMission,
+    updateSquad, deleteSquad,
+    removeSquadMember, setSquadMemberRole,
+    listSquadsAdmin
 };

@@ -198,9 +198,21 @@ function getUserCampaigns(userId) {
     `).all(userId);
 }
 
+/**
+ * Delete a campaign. user_campaigns rows cascade via FK.
+ * Returns the snapshot for audit trail.
+ */
+function deleteCampaign(id) {
+    const db = getDatabase();
+    const snapshot = getCampaignById(id);
+    db.prepare('DELETE FROM campaigns WHERE id = ?').run(id);
+    return snapshot;
+}
+
 module.exports = {
     createCampaign,
     updateCampaign,
+    deleteCampaign,
     getCampaignById,
     listCampaigns,
     joinCampaign,

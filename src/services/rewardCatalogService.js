@@ -181,8 +181,51 @@ function getRewardStats() {
     `).get();
 }
 
+/**
+ * Delete a reward. reward_redemptions cascade via FK.
+ * Returns snapshot for audit trail.
+ */
+function deleteReward(id) {
+    const db = getDatabase();
+    const snapshot = getRewardById(id);
+    db.prepare('DELETE FROM rewards WHERE id = ?').run(id);
+    return snapshot;
+}
+
+/**
+ * List redemptions across all users (admin) with optional status filter.
+ */
+function listRedemptions({ status, limit = 50, offset = 0 } = {}) {
+    const db = getDatabase();
+    let query = `
+        SELECT rr.*, r.title as reward_title, r.points_cost as reward_cost,
+               r.tier_required, u.name as user_name, u.email as user_email
+        FROM reward_redemptions rr
+        JOIN rewards r ON rr.reward_id = r.id
+        JOIN users u ON rr.user_id = u.id
+        WHERE 1=1
+    `;
+    const params = [];
+    if (status) { query += ' AND rr.status = ?'; params.push(status); }
+    query += ' ORDER BY rr.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+    return db.prepare(query).all(...params);
+}
+
+/**
+ * Mark a redemption fulfilled. Thin wrapper over updateRedemptionStatus
+ * that captures admin-supplied tracking data.
+ */
+function fulfillRedemption(redemptionId, fulfillmentData) {
+    const data = typeof fulfillmentData === 'string'
+        ? fulfillmentData
+        : JSON.stringify(fulfillmentData || {});
+    return updateRedemptionStatus(redemptionId, 'fulfilled', data);
+}
+
 module.exports = {
-    createReward, updateReward, getRewardById, listRewards,
+    createReward, updateReward, deleteReward, getRewardById, listRewards,
     redeemReward, getUserRedemptions, updateRedemptionStatus,
+    listRedemptions, fulfillRedemption,
     getRewardStats
 };

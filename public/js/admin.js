@@ -266,6 +266,7 @@ function showPage(page) {
     if (page === 'tasks') loadTasksPage();
     if (page === 'verifications') loadVerifications();
     if (page === 'rewards') loadRewardsPage();
+    if (page === 'squads') loadSquads();
 }
 
 // =============================================================
@@ -346,17 +347,18 @@ async function loadEngagementCampaigns() {
 
         tbody.innerHTML = campaigns.map(c => `
             <tr>
-                <td data-label="Title"><strong>${c.title}</strong></td>
-                <td data-label="Type"><span class="badge badge-info">${c.type}</span></td>
+                <td data-label="Title"><strong>${escapeHtml(c.title)}</strong></td>
+                <td data-label="Type"><span class="badge badge-info">${escapeHtml(c.type || '')}</span></td>
                 <td data-label="Points">${c.points} pts</td>
-                <td data-label="Status"><span class="badge badge-${c.status === 'active' ? 'active' : 'frozen'}">${c.status}</span></td>
-                <td data-label="Start Date">${formatDate(c.starts_at) || '-'}</td>
-                <td data-label="End Date">${formatDate(c.ends_at) || '-'}</td>
+                <td data-label="Status"><span class="badge badge-${c.status === 'active' ? 'active' : 'frozen'}">${escapeHtml(c.status || '')}</span></td>
+                <td data-label="Start Date">${formatDate(c.start_date || c.starts_at) || '-'}</td>
+                <td data-label="End Date">${formatDate(c.end_date || c.ends_at) || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick="alert('Edit not implemented yet')">Edit</button>
+                    <button class="btn btn-sm btn-secondary" onclick='editEngagementCampaign(${JSON.stringify(c)})'>Edit</button>
                     ${c.status === 'active'
-                ? `<button class="btn btn-sm btn-danger" onclick="toggleCampaignStatus('${c.id}', 'ended')">End</button>`
+                ? `<button class="btn btn-sm btn-secondary" onclick="toggleCampaignStatus('${c.id}', 'ended')">End</button>`
                 : `<button class="btn btn-sm btn-success" onclick="toggleCampaignStatus('${c.id}', 'active')">Activate</button>`}
+                    <button class="btn btn-sm btn-danger" onclick="deleteEngagementCampaign(${c.id})">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -2215,5 +2217,488 @@ document.getElementById('refreshLeaderboardBtn')?.addEventListener('click', refr
 // Tasks sub-tab switcher
 document.querySelectorAll('[data-tasks-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTasksTab(btn.dataset.tasksTab));
+});
+
+// =====================================================================
+// TIER 2 — SQUADS / CAMPAIGNS / REWARDS-DELETE / REDEMPTIONS
+// =====================================================================
+
+// ─── SQUADS ──────────────────────────────────────────────────────────
+async function loadSquads() {
+    const tbody = document.getElementById('squadsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 8);
+    try {
+        const res = await fetch('/api/admin/squads', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red;">Failed to load squads</td></tr>';
+            return;
+        }
+        const squads = await res.json();
+        if (!Array.isArray(squads) || squads.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <div class="empty-state__title">No squads yet</div>
+                        <div class="empty-state__description">Create the first squad to enable team-based missions.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = squads.map(s => `
+            <tr>
+                <td data-label="Name"><strong>${escapeHtml(s.name)}</strong></td>
+                <td data-label="Artist">${escapeHtml(s.artist_name || '-')}</td>
+                <td data-label="Members">${s.member_count || 0} / ${s.max_members || 0}</td>
+                <td data-label="Score">${(s.total_score || 0).toLocaleString()}</td>
+                <td data-label="Leader">${escapeHtml(s.leader_name || '-')}</td>
+                <td data-label="Status">${s.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">disabled</span>'}</td>
+                <td data-label="Created">${formatDate(s.created_at) || '-'}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-secondary" onclick="viewSquadDetail(${s.id})">View</button>
+                    <button class="btn btn-sm btn-secondary" onclick='editSquad(${JSON.stringify(s)})'>Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteSquad(${s.id}, '${escapeHtml(s.name).replace(/'/g, "\\'")}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load squads error:', e);
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function showCreateSquadModal() {
+    document.getElementById('squadModalTitle').textContent = 'Create Squad';
+    document.getElementById('squadSubmitBtn').textContent = 'Create Squad';
+    document.getElementById('squadForm')?.reset();
+    document.getElementById('squadFormId').value = '';
+    document.getElementById('squadStatusGroup').style.display = 'none';
+    document.getElementById('squadModal').classList.add('active');
+}
+
+function editSquad(squad) {
+    document.getElementById('squadModalTitle').textContent = 'Edit Squad';
+    document.getElementById('squadSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('squadFormId').value = squad.id;
+    document.getElementById('squadName').value = squad.name || '';
+    document.getElementById('squadDescription').value = squad.description || '';
+    document.getElementById('squadArtistName').value = squad.artist_name || '';
+    document.getElementById('squadArtistId').value = squad.artist_id || '';
+    document.getElementById('squadMaxMembers').value = squad.max_members || 50;
+    document.getElementById('squadIsActive').value = squad.is_active ? '1' : '0';
+    document.getElementById('squadStatusGroup').style.display = '';
+    document.getElementById('squadModal').classList.add('active');
+}
+
+function closeSquadModal() {
+    document.getElementById('squadModal')?.classList.remove('active');
+}
+
+async function submitSquadForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('squadFormId').value;
+    const isEdit = !!id;
+    const payload = {
+        name: document.getElementById('squadName').value.trim(),
+        description: document.getElementById('squadDescription').value.trim(),
+        artistName: document.getElementById('squadArtistName').value.trim() || null,
+        artistId: document.getElementById('squadArtistId').value.trim() || null,
+        maxMembers: parseInt(document.getElementById('squadMaxMembers').value) || 50
+    };
+    if (isEdit) {
+        // PUT uses snake_case allowed list
+        const updatePayload = {
+            name: payload.name,
+            description: payload.description,
+            artist_name: payload.artistName,
+            artist_id: payload.artistId,
+            max_members: payload.maxMembers,
+            is_active: parseInt(document.getElementById('squadIsActive').value)
+        };
+        try {
+            const res = await fetch(`/api/admin/squads/${id}`, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatePayload)
+            });
+            if (handleAuthExpired(res)) return;
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { alert(data.error || 'Failed to update squad'); return; }
+            showSuccessModal('Squad Updated', payload.name);
+            closeSquadModal();
+            loadSquads();
+        } catch (e) {
+            console.error('Save squad error:', e);
+            alert('Network error');
+        }
+        return;
+    }
+    try {
+        const res = await fetch('/api/admin/squads', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to create squad'); return; }
+        showSuccessModal('Squad Created', payload.name);
+        closeSquadModal();
+        loadSquads();
+    } catch (e) {
+        console.error('Create squad error:', e);
+        alert('Network error');
+    }
+}
+
+async function deleteSquad(id, name) {
+    if (!confirm(`Delete squad "${name}"? Members and missions will be removed. This cannot be undone.`)) return;
+    try {
+        const res = await fetch(`/api/admin/squads/${id}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to delete squad (superadmin required)'); return; }
+        showSuccessModal('Squad Deleted', name);
+        loadSquads();
+    } catch (e) {
+        console.error('Delete squad error:', e);
+        alert('Network error');
+    }
+}
+
+async function viewSquadDetail(id) {
+    const modal = document.getElementById('squadDetailModal');
+    const content = document.getElementById('squadDetailContent');
+    document.getElementById('squadDetailTitle').textContent = 'Loading…';
+    content.innerHTML = '<div class="text-muted">Loading…</div>';
+    modal.classList.add('active');
+    try {
+        const res = await fetch(`/api/admin/squads/${id}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            content.innerHTML = '<div style="color:red;">Failed to load squad</div>';
+            return;
+        }
+        const squad = await res.json();
+        document.getElementById('squadDetailTitle').textContent = squad.name || 'Squad';
+        const members = (squad.members || []).map(m => `
+            <tr>
+                <td>${escapeHtml(m.name || '')}</td>
+                <td class="text-muted">${escapeHtml(m.email || '')}</td>
+                <td>${escapeHtml(m.role || 'member')}</td>
+                <td>${(m.contribution || 0).toLocaleString()} pts</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="kickSquadMember(${squad.id}, ${m.user_id}, '${escapeHtml(m.name || '').replace(/'/g, "\\'")}')">Kick</button>
+                </td>
+            </tr>`).join('');
+        content.innerHTML = `
+            <div style="display:grid;gap:16px;">
+                <div>
+                    <div class="text-muted" style="font-size:0.75rem;">Description</div>
+                    <div>${escapeHtml(squad.description || '—')}</div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                    <div><div class="text-muted" style="font-size:0.75rem;">Members</div><div>${squad.memberCount || 0} / ${squad.max_members || 0}</div></div>
+                    <div><div class="text-muted" style="font-size:0.75rem;">Score</div><div>${(squad.total_score || 0).toLocaleString()}</div></div>
+                    <div><div class="text-muted" style="font-size:0.75rem;">Status</div><div>${squad.is_active ? 'Active' : 'Disabled'}</div></div>
+                </div>
+                <div>
+                    <h4 style="margin:0 0 8px 0;">Members</h4>
+                    ${members ? `<table class="responsive-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Contribution</th><th>Actions</th></tr></thead><tbody>${members}</tbody></table>` : '<div class="text-muted">No members yet</div>'}
+                </div>
+                <div>
+                    <h4 style="margin:0 0 8px 0;">Active Missions</h4>
+                    ${(squad.missions || []).length === 0 ? '<div class="text-muted">No active missions</div>' :
+                        (squad.missions || []).map(m => `<div style="padding:8px;border:1px solid rgba(255,255,255,0.05);border-radius:4px;margin-bottom:6px;">
+                            <strong>${escapeHtml(m.title || '')}</strong>
+                            <div class="text-muted" style="font-size:0.75rem;">${m.current_completions || 0} / ${m.target_completions || 0} completions · ${m.bonus_points || 0} bonus pts</div>
+                        </div>`).join('')}
+                </div>
+            </div>`;
+    } catch (e) {
+        console.error('View squad error:', e);
+        content.innerHTML = '<div style="color:red;">Network error</div>';
+    }
+}
+
+function closeSquadDetail() {
+    document.getElementById('squadDetailModal')?.classList.remove('active');
+}
+
+async function kickSquadMember(squadId, userId, name) {
+    if (!confirm(`Remove ${name} from this squad?`)) return;
+    try {
+        const res = await fetch(`/api/admin/squads/${squadId}/members/${userId}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to remove member'); return; }
+        showSuccessModal('Member Removed', name);
+        viewSquadDetail(squadId); // refresh detail
+    } catch (e) {
+        console.error('Kick error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── ENGAGEMENT CAMPAIGN EDIT/DELETE ─────────────────────────────────
+function editEngagementCampaign(campaign) {
+    // Reuse existing campaign modal — toggle between create/update by setting form action
+    showCreateCampaignModal();
+    document.getElementById('engTitle').value = campaign.title || '';
+    document.getElementById('engType').value = campaign.type || 'stream';
+    document.getElementById('engDesc').value = campaign.description || '';
+    document.getElementById('engPoints').value = campaign.points || 100;
+    document.getElementById('engEndDate').value = (campaign.end_date || campaign.ends_at)
+        ? (campaign.end_date || campaign.ends_at).split('T')[0]
+        : '';
+    document.getElementById('engImage').value = campaign.image_url || '';
+    // Stash editing id on form for submit handler to detect
+    const form = document.getElementById('createEngagementForm');
+    if (form) form.dataset.editingId = campaign.id;
+    const heading = document.querySelector('#campaignModal .modal-header h3');
+    if (heading) heading.textContent = 'Edit Engagement Campaign';
+    const submitBtn = form?.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = 'Save Changes';
+}
+
+async function deleteEngagementCampaign(id) {
+    if (!confirm('Delete this engagement campaign? Participations will cascade. Cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/admin/engagement-campaigns/${id}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to delete campaign (superadmin required)'); return; }
+        showSuccessModal('Campaign Deleted', `#${id}`);
+        loadEngagementCampaigns();
+    } catch (e) {
+        console.error('Delete campaign error:', e);
+        alert('Network error');
+    }
+}
+
+// Patch the engagement create form to support edit mode (reuse same submit listener)
+(() => {
+    const form = document.getElementById('createEngagementForm');
+    if (!form) return;
+    form.addEventListener('submit', async (e) => {
+        if (!form.dataset.editingId) return; // create flow handled elsewhere
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        const id = form.dataset.editingId;
+        const payload = {
+            title: document.getElementById('engTitle').value.trim(),
+            type: document.getElementById('engType').value,
+            description: document.getElementById('engDesc').value.trim(),
+            points: parseInt(document.getElementById('engPoints').value) || 0,
+            end_date: document.getElementById('engEndDate').value || null,
+            image_url: document.getElementById('engImage').value.trim() || null
+        };
+        try {
+            const res = await fetch(`/api/admin/engagement-campaigns/${id}`, {
+                method: 'PUT',
+                credentials: 'same-origin',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (handleAuthExpired(res)) return;
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) { alert(data.error || 'Failed to update campaign'); return; }
+            showSuccessModal('Campaign Updated', payload.title);
+            delete form.dataset.editingId;
+            closeCampaignModal();
+            loadEngagementCampaigns();
+        } catch (err) {
+            console.error('Update campaign error:', err);
+            alert('Network error');
+        }
+    }, true); // capture-phase so we run before the create handler
+})();
+
+// ─── REDEMPTIONS ─────────────────────────────────────────────────────
+function switchRewardsTab(name) {
+    document.querySelectorAll('[data-rewards-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.rewardsTab === name);
+    });
+    document.getElementById('rewardsTabCatalog')?.classList.toggle('hidden', name !== 'catalog');
+    document.getElementById('rewardsTabRedemptions')?.classList.toggle('hidden', name !== 'redemptions');
+    if (name === 'redemptions') loadRedemptions();
+}
+
+async function loadRedemptions() {
+    const tbody = document.getElementById('redemptionsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 6);
+    try {
+        const status = document.getElementById('redemptionStatusFilter')?.value || '';
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        const res = await fetch(`/api/admin/rewards/redemptions?${params.toString()}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Failed to load</td></tr>';
+            return;
+        }
+        const items = await res.json();
+        if (!Array.isArray(items) || items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:24px;">No redemptions match your filter.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = items.map(r => {
+            const statusBadge = r.status === 'fulfilled'
+                ? '<span class="badge badge-active">fulfilled</span>'
+                : r.status === 'cancelled'
+                    ? '<span class="badge badge-revoked">cancelled</span>'
+                    : `<span class="badge badge-frozen">${escapeHtml(r.status || 'pending')}</span>`;
+            return `
+                <tr>
+                    <td data-label="Created">${formatDate(r.created_at) || '-'}</td>
+                    <td data-label="User"><strong>${escapeHtml(r.user_name || '')}</strong><br><span class="text-muted" style="font-size:0.75rem;">${escapeHtml(r.user_email || '')}</span></td>
+                    <td data-label="Reward">${escapeHtml(r.reward_title || '-')}</td>
+                    <td data-label="Points">${(r.points_spent || 0).toLocaleString()}</td>
+                    <td data-label="Status">${statusBadge}</td>
+                    <td data-label="Actions">
+                        ${r.status !== 'fulfilled' && r.status !== 'cancelled'
+                            ? `<button class="btn btn-sm btn-success" onclick='openFulfillModal(${JSON.stringify(r)})'>Fulfill</button>`
+                            : '<span class="text-muted">—</span>'}
+                    </td>
+                </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('Load redemptions error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function openFulfillModal(redemption) {
+    document.getElementById('fulfillRedemptionId').value = redemption.id;
+    document.getElementById('fulfillSummary').innerHTML = `
+        <strong>${escapeHtml(redemption.reward_title || '')}</strong> for
+        <strong>${escapeHtml(redemption.user_name || '')}</strong>
+        <span class="text-muted">(${(redemption.points_spent || 0).toLocaleString()} pts)</span>
+    `;
+    document.getElementById('fulfillTracking').value = '';
+    document.getElementById('fulfillNotes').value = '';
+    document.getElementById('fulfillModal').classList.add('active');
+}
+
+function closeFulfillModal() {
+    document.getElementById('fulfillModal')?.classList.remove('active');
+}
+
+async function submitFulfillForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('fulfillRedemptionId').value;
+    const tracking = document.getElementById('fulfillTracking').value.trim();
+    const notes = document.getElementById('fulfillNotes').value.trim();
+    const fulfillment_data = JSON.stringify({
+        tracking: tracking || null,
+        notes: notes || null,
+        fulfilled_at: new Date().toISOString()
+    });
+    try {
+        const res = await fetch(`/api/admin/rewards/redemptions/${id}/fulfill`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fulfillment_data })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to fulfill redemption'); return; }
+        showSuccessModal('Redemption Fulfilled', `#${id}`);
+        closeFulfillModal();
+        loadRedemptions();
+        loadRewardStats();
+    } catch (e) {
+        console.error('Fulfill error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── REWARD DELETE — extend Tier 1 catalog row actions ───────────────
+async function deleteReward(id, title) {
+    if (!confirm(`Delete reward "${title}"? Existing redemptions will cascade. Cannot be undone.`)) return;
+    try {
+        const res = await fetch(`/api/admin/rewards/${id}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to delete reward (superadmin required)'); return; }
+        showSuccessModal('Reward Deleted', title);
+        loadRewards();
+        loadRewardStats();
+    } catch (e) {
+        console.error('Delete reward error:', e);
+        alert('Network error');
+    }
+}
+
+// Re-render of rewards table with delete button — patch the existing renderer
+// by overriding the row mapper. We patch loadRewards by reassigning it.
+const __origLoadRewards = loadRewards;
+loadRewards = async function patchedLoadRewards() {
+    const tbody = document.getElementById('rewardsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 7);
+    try {
+        const res = await fetch('/api/admin/rewards', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Failed to load rewards</td></tr>';
+            return;
+        }
+        const rewards = await res.json();
+        if (!Array.isArray(rewards) || rewards.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="7">
+                    <div class="empty-state">
+                        <div class="empty-state__title">No rewards yet</div>
+                        <div class="empty-state__description">Add the first reward fans can redeem with points.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = rewards.map(r => `
+            <tr>
+                <td data-label="Title"><strong>${escapeHtml(r.title)}</strong></td>
+                <td data-label="Category">${escapeHtml(r.category || '-')}</td>
+                <td data-label="Cost">${(r.points_cost || 0).toLocaleString()} pts</td>
+                <td data-label="Tier">${escapeHtml(r.tier_required || 'fan')}</td>
+                <td data-label="Inventory">${r.inventory === -1 ? '∞' : (r.inventory ?? 0)}</td>
+                <td data-label="Active">${r.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">paused</span>'}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-secondary" onclick='editReward(${JSON.stringify(r)})'>Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteReward(${r.id}, '${escapeHtml(r.title || '').replace(/'/g, "\\'")}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load rewards error:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+};
+
+// ─── EVENT WIRING (Tier 2) ───────────────────────────────────────────
+document.getElementById('newSquadBtn')?.addEventListener('click', showCreateSquadModal);
+document.getElementById('closeSquadModalBtn')?.addEventListener('click', closeSquadModal);
+document.getElementById('closeSquadDetailBtn')?.addEventListener('click', closeSquadDetail);
+document.getElementById('squadForm')?.addEventListener('submit', submitSquadForm);
+document.getElementById('closeFulfillModalBtn')?.addEventListener('click', closeFulfillModal);
+document.getElementById('fulfillForm')?.addEventListener('submit', submitFulfillForm);
+document.getElementById('applyRedemptionFiltersBtn')?.addEventListener('click', loadRedemptions);
+
+// Rewards sub-tab switcher
+document.querySelectorAll('[data-rewards-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchRewardsTab(btn.dataset.rewardsTab));
 });
 

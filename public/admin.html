@@ -417,6 +417,16 @@
                     </svg>
                     <span class="nav-label">Rewards</span>
                 </div>
+                <div class="nav-item" data-page="squads">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
+                    <span class="nav-label">Squads</span>
+                </div>
                 <div class="nav-item" data-page="loyalty">
                     <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -1406,7 +1416,7 @@
                 <!-- Rewards Page -->
                 <div id="rewardsPage" class="page hidden">
                     <div class="page-header">
-                        <h1>Rewards Catalog</h1>
+                        <h1>Rewards</h1>
                         <button class="btn btn-primary" id="newRewardBtn">+ New Reward</button>
                     </div>
 
@@ -1429,23 +1439,170 @@
                         </div>
                     </div>
 
+                    <div class="tabs" style="margin-bottom:16px;">
+                        <button class="tab active" data-rewards-tab="catalog">Catalog</button>
+                        <button class="tab" data-rewards-tab="redemptions">Redemptions</button>
+                    </div>
+
+                    <div id="rewardsTabCatalog" class="rewards-tab-content">
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Category</th>
+                                            <th>Cost</th>
+                                            <th>Tier</th>
+                                            <th>Inventory</th>
+                                            <th>Active</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rewardsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="rewardsTabRedemptions" class="rewards-tab-content hidden">
+                        <div class="filter-bar">
+                            <select id="redemptionStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="fulfilled">Fulfilled</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" id="applyRedemptionFiltersBtn">Apply</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Created</th>
+                                            <th>User</th>
+                                            <th>Reward</th>
+                                            <th>Points</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="redemptionsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fulfill Redemption Modal -->
+                <div class="modal-overlay" id="fulfillModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3>Fulfill Redemption</h3>
+                            <button class="modal-close" id="closeFulfillModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="fulfillForm">
+                                <input type="hidden" id="fulfillRedemptionId">
+                                <div id="fulfillSummary" class="text-muted" style="margin-bottom:16px;"></div>
+                                <div class="form-group">
+                                    <label class="form-label">Tracking / Confirmation Code</label>
+                                    <input type="text" id="fulfillTracking" class="form-input">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Notes</label>
+                                    <textarea id="fulfillNotes" class="form-input" rows="3" placeholder="How and when delivered"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full">Mark Fulfilled</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Squads Page -->
+                <div id="squadsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Squads</h1>
+                        <button class="btn btn-primary" id="newSquadBtn">+ New Squad</button>
+                    </div>
                     <div class="card">
                         <div class="table-container">
                             <table class="responsive-table">
                                 <thead>
                                     <tr>
-                                        <th>Title</th>
-                                        <th>Category</th>
-                                        <th>Cost</th>
-                                        <th>Tier</th>
-                                        <th>Inventory</th>
-                                        <th>Active</th>
+                                        <th>Name</th>
+                                        <th>Artist</th>
+                                        <th>Members</th>
+                                        <th>Score</th>
+                                        <th>Leader</th>
+                                        <th>Status</th>
+                                        <th>Created</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="rewardsTableBody"></tbody>
+                                <tbody id="squadsTableBody"></tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Squad Modal (create/edit) -->
+                <div class="modal-overlay" id="squadModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 id="squadModalTitle">Create Squad</h3>
+                            <button class="modal-close" id="closeSquadModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="squadForm">
+                                <input type="hidden" id="squadFormId">
+                                <div class="form-group">
+                                    <label class="form-label">Squad Name</label>
+                                    <input type="text" id="squadName" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="squadDescription" class="form-input" rows="2"></textarea>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Artist Name</label>
+                                        <input type="text" id="squadArtistName" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Artist ID</label>
+                                        <input type="text" id="squadArtistId" class="form-input">
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Max Members</label>
+                                        <input type="number" id="squadMaxMembers" class="form-input" value="50" min="2">
+                                    </div>
+                                    <div class="form-group" id="squadStatusGroup" style="display:none;">
+                                        <label class="form-label">Active</label>
+                                        <select id="squadIsActive" class="form-input">
+                                            <option value="1">Active</option>
+                                            <option value="0">Disabled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="squadSubmitBtn">Create Squad</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Squad Detail Modal -->
+                <div class="modal-overlay" id="squadDetailModal">
+                    <div class="modal" style="max-width:720px;">
+                        <div class="modal-header">
+                            <h3 id="squadDetailTitle">Squad Detail</h3>
+                            <button class="modal-close" id="closeSquadDetailBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" id="squadDetailContent" style="padding:24px;"></div>
                     </div>
                 </div>
 

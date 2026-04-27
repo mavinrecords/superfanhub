@@ -73,6 +73,48 @@
    ============================================================================ */
 
 /* ----------------------------------------------------------------------------
+   Design-token forwarding for pages that do NOT load styles.css.
+   login.html and register.html are standalone — they define their own
+   inline :root with --text-white / --mavin-gold / etc. but do not declare
+   the modern tokens (--text-primary, --bg-tertiary, --border, …) that
+   the catch-all input rule below references. Without this block, the
+   catch-all rule resolves to invalid → UA default → black text in inputs.
+
+   Values mirror styles.css :root exactly, so on pages that DO load
+   styles.css, this block redeclares the same values (no visible change,
+   no cascade conflict).
+   ---------------------------------------------------------------------------- */
+:root {
+    /* Modern tokens used by mobile.css catch-all + autofill rules */
+    --text-primary: #ffffff;
+    --text-secondary: #adb5bb;
+    --text-muted: #8a8a8a;
+    --bg-primary: #000000;
+    --bg-secondary: #0a0a0a;
+    --bg-tertiary: #111111;
+    --bg-elevated: #1a1a1a;
+    --accent: #A2812E;
+    --accent-hover: #c4a03a;
+    --accent-text: #d0a84a;
+    --border: rgba(255, 255, 255, 0.1);
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --transition-fast: 150ms ease;
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);
+    --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+    /* Legacy aliases — kept available on every page so inline <style>
+       blocks in tasks.html, dashboard.html, login.html, register.html, etc.
+       resolve consistently even if they ever stop redeclaring locally. */
+    --text-white: var(--text-primary);
+    --text-gray: var(--text-muted);
+    --mavin-gold: var(--accent);
+    --mavin-gold-light: var(--accent-hover);
+    --font-main: var(--font-sans);
+    --border-color: var(--border);
+}
+
+/* ----------------------------------------------------------------------------
    M0-3 — Global :focus-visible ring (keyboard-visible focus only)
    ---------------------------------------------------------------------------- */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {

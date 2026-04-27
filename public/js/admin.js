@@ -1360,9 +1360,23 @@ async function loadLeaderboard() {
 
     try {
         const response = await fetch('/api/admin/superfans/leaderboard?limit=10', { credentials: 'same-origin' });
-        const data = await response.json();
 
-        if (!data || data.length === 0) {
+        // Auth expiry → redirect to login (same pattern as campaign/import handlers)
+        if (handleAuthExpired(response)) return;
+
+        // Try to parse the body even on error responses so we can surface
+        // the actual server-side error message instead of a generic string.
+        let data = null;
+        try { data = await response.json(); } catch (_) { /* non-JSON body */ }
+
+        if (!response.ok) {
+            const serverMsg = (data && data.error) ? data.error : `HTTP ${response.status}`;
+            console.error('Leaderboard error:', response.status, data);
+            container.innerHTML = `<p style="color:red;">Error loading leaderboard: ${escapeHtml(serverMsg)}</p>`;
+            return;
+        }
+
+        if (!Array.isArray(data) || data.length === 0) {
             container.innerHTML = '<p style="color:var(--text-muted);">No leaderboard data yet</p>';
             return;
         }
@@ -1383,7 +1397,7 @@ async function loadLeaderboard() {
         `;
     } catch (error) {
         console.error('Leaderboard error:', error);
-        container.innerHTML = '<p style="color:red;">Error loading leaderboard</p>';
+        container.innerHTML = `<p style="color:red;">Error loading leaderboard: ${escapeHtml(error.message || 'Network error')}</p>`;
     }
 }
 

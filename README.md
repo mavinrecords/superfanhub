@@ -140,9 +140,30 @@ Anything left unset disables the corresponding feature gracefully — server sti
 
 ## Database
 
-SQLite via `better-sqlite3` in WAL mode. Single file at `src/db/giftcards.db`. Schema lives in `src/db/schema.sql`; migrations in `src/db/migrate.js`. All money/points mutations are wrapped in transactions.
+SQLite via `better-sqlite3` in WAL mode. Single file at the path resolved from the `DB_PATH` env var (defaults to `src/db/giftcards.db`). Schema lives in `src/db/schema.sql`; migrations in `src/db/migrate.js`. All money/points mutations are wrapped in transactions.
 
-For deployment with persistent storage (Render, Fly), mount a volume at `src/db/` so the file survives redeploys. For multi-instance deployments, migrate to PostgreSQL — same SQL is mostly portable.
+### Persistent storage (read this — it's the most common deploy bug)
+
+The container filesystem on every host (Render, Fly, Heroku, Railway, AWS App Runner, …) is **ephemeral**. Without a mounted persistent disk pointed at the directory containing `DB_PATH`, every redeploy creates a fresh empty container, the DB file is gone, and every fan registration / admin session / gift card from before the deploy disappears.
+
+The boot diagnostics at startup tell you whether persistence is working:
+
+```
+[db] DB_PATH:           /data/giftcards.db
+[db] File exists:       yes              ← good
+[db] Last modified:     2026-04-27T...   ← survived from a prior boot
+```
+
+If you see `File exists: NO (will be created)` on every boot, your storage is ephemeral and the data will keep vanishing.
+
+| Host | Free-tier disk? | Setup |
+|---|---|---|
+| **Render Free** | ❌ No persistent disks | Cannot persist — must upgrade or move |
+| **Render Starter** ($7/mo) | ✅ Yes | Add Disk → mount at `/data` → set `DB_PATH=/data/giftcards.db` |
+| **Fly.io Free** | ✅ 3 GB volume free | `fly volumes create data --size 3` → mount at `/data` → set `DB_PATH=/data/giftcards.db` |
+| **Railway Hobby** | ✅ Yes | Volume → mount path `/data` → set `DB_PATH=/data/giftcards.db` |
+
+For multi-instance deployments, migrate to PostgreSQL (the schema is mostly portable, but `better-sqlite3` calls would need to be swapped for `pg` — non-trivial).
 
 ---
 
@@ -182,17 +203,56 @@ Recommended: **Render** (Web Service + 1 GB persistent disk on `src/db/`), **Fly
 
 Pinned to **Node 22 LTS** via `.nvmrc` and `engines.node`. `better-sqlite3@9.6.0` does not have prebuilt binaries for Node 23+ and its source-build fails against the V8 API in those versions. If your platform respects neither file, set `NODE_VERSION=22` as an env var.
 
-### Render-specific setup
+### Render-specific setup (Starter plan, $7/mo — needed for disk)
 
 1. New → Web Service → connect repo
 2. Build command: `npm install`
 3. Start command: `npm start`
-4. Add a **Persistent Disk** mounted at `/opt/render/project/src/src/db` (1 GB is plenty)
-5. Set env vars from `.env.example`. To skip the `admin` / `admin123` default and the forced rotation, set:
-   - `ADMIN_USERNAME` — your chosen username
-   - `ADMIN_PASSWORD` — your chosen password (min 8 chars). Mark this var **secret** in Render
+4. **Add a Persistent Disk** (this is the part that prevents data loss):
+   - Render dashboard → service → **Disks** → **Add Disk**
+   - Mount path: `/data`
+   - Size: 1 GB (plenty)
+5. Set env vars:
+   - `NODE_ENV=production`
+   - `DB_PATH=/data/giftcards.db` ← **this is critical**, or the DB still lives on the ephemeral container disk
+   - `SESSION_SECRET` — generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`, mark Secret
+   - `ADMIN_USERNAME` and `ADMIN_PASSWORD` (min 8 chars, mark Password as Secret) — auto-seeds the admin user on first boot. If unset, falls back to `admin` / `admin123` with forced rotation.
+   - Plus any optional integrations: `SPOTIFY_CLIENT_ID`, `LASTFM_API_KEY`, `SMTP_*`, etc.
 
-That's it — no shell access required. The server seeds the admin user automatically on boot from those env vars. If `ADMIN_PASSWORD` is unset, it falls back to `admin` / `admin123` with forced rotation on first login. Either way, the seed is idempotent: once the admin row exists, the env vars are ignored on subsequent boots. To rotate the password later, log into `/admin` and use the password-change UI.
+After the first successful boot, check the deploy logs. You should see:
+
+```
+[db] DB_PATH:           /data/giftcards.db
+[db] File exists:       NO (will be created)   ← only on the very first boot
+```
+
+After the second deploy:
+
+```
+[db] File exists:       yes
+[db] Last modified:     <some earlier timestamp>
+```
+
+That's the confirmation persistence is working. Fan registrations, admin sessions, gift cards, and audit logs all survive future redeploys.
+
+### Fly.io alternative (free 3 GB volume)
+
+```bash
+fly launch --name mavin-superfan-hub --no-deploy
+fly volumes create data --size 3 --region <your-region>
+# Edit fly.toml — add:
+#   [mounts]
+#     source = "data"
+#     destination = "/data"
+fly secrets set NODE_ENV=production DB_PATH=/data/giftcards.db SESSION_SECRET=$(node -e "console.log(require('crypto').randomBytes(48).toString('hex'))") ADMIN_PASSWORD=<your-pw>
+fly deploy
+```
+
+Same boot diagnostics confirm persistence.
+
+### What if I'm already on Render Free with data I want to keep?
+
+You can't. Free-tier storage was wiped on whichever redeploy happened most recently. Upgrade to Starter, mount the disk, set `DB_PATH=/data/giftcards.db`, redeploy — from that moment forward, data persists. Anything registered before that moment is gone.
 
 ---
 

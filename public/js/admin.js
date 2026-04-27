@@ -263,6 +263,9 @@ function showPage(page) {
     if (page === 'superfans') loadSuperFans();
     if (page === 'promos') { /* No load needed for form */ }
     if (page === 'campaigns') loadEngagementCampaigns();
+    if (page === 'tasks') loadTasksPage();
+    if (page === 'verifications') loadVerifications();
+    if (page === 'rewards') loadRewardsPage();
 }
 
 // =============================================================
@@ -1232,6 +1235,9 @@ async function loadAnalytics() {
     } catch (error) {
         console.error('Failed to load analytics:', error);
     }
+
+    // Also refresh fan analytics block (separate endpoint, won't fail entire page if missing)
+    loadFanAnalytics();
 }
 
 function renderBarChart(containerId, data) {
@@ -1539,4 +1545,675 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
+
+// =====================================================================
+// TIER 1 — TASKS / VERIFICATIONS / REWARDS / FAN ANALYTICS / LEADERBOARD
+// =====================================================================
+
+// ─── TASKS PAGE ──────────────────────────────────────────────────────
+async function loadTasksPage() {
+    // Activate first tab and load all three sources up-front so users can
+    // switch tabs without waiting on a per-tab fetch.
+    switchTasksTab('list');
+    loadTaskStats();
+    loadTasks();
+    loadMultipliers();
+    loadTaskFraud();
+}
+
+function switchTasksTab(name) {
+    document.querySelectorAll('[data-tasks-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tasksTab === name);
+    });
+    document.getElementById('tasksTabList')?.classList.toggle('hidden', name !== 'list');
+    document.getElementById('tasksTabMultipliers')?.classList.toggle('hidden', name !== 'multipliers');
+    document.getElementById('tasksTabFraud')?.classList.toggle('hidden', name !== 'fraud');
+}
+
+async function loadTaskStats() {
+    try {
+        const res = await fetch('/api/admin/tasks/stats', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) return;
+        const stats = await res.json();
+        document.getElementById('taskStatTotal').textContent = (stats.total_tasks ?? stats.total ?? 0).toLocaleString();
+        document.getElementById('taskStatActive').textContent = (stats.active_tasks ?? stats.active ?? 0).toLocaleString();
+        document.getElementById('taskStatCompletions').textContent = (stats.total_completions ?? stats.completions ?? 0).toLocaleString();
+    } catch (e) {
+        console.error('Task stats error:', e);
+    }
+}
+
+async function loadTasks() {
+    const tbody = document.getElementById('tasksTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 8);
+    try {
+        const status = document.getElementById('taskStatusFilter')?.value || '';
+        const type = document.getElementById('taskTypeFilter')?.value || '';
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        if (type) params.set('type', type);
+        const res = await fetch(`/api/admin/tasks?${params.toString()}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red;">Failed to load tasks</td></tr>';
+            return;
+        }
+        const tasks = await res.json();
+        if (!Array.isArray(tasks) || tasks.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="8">
+                    <div class="empty-state">
+                        <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M9 11l3 3L22 4"/>
+                            <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+                        </svg>
+                        <div class="empty-state__title">No tasks yet</div>
+                        <div class="empty-state__description">Create your first community task to start engaging fans.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = tasks.map(t => `
+            <tr>
+                <td data-label="Title"><strong>${escapeHtml(t.title)}</strong></td>
+                <td data-label="Type"><span class="badge badge-info">${escapeHtml(t.type || '')}</span></td>
+                <td data-label="Points">${(t.points || 0).toLocaleString()}</td>
+                <td data-label="Difficulty">${escapeHtml(t.difficulty || 'easy')}</td>
+                <td data-label="Status"><span class="badge badge-${t.status === 'active' ? 'active' : 'frozen'}">${escapeHtml(t.status || '')}</span></td>
+                <td data-label="Proof">${escapeHtml(t.required_proof || 'none')}</td>
+                <td data-label="Created">${formatDate(t.created_at) || '-'}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-secondary" onclick='editTask(${JSON.stringify(t)})'>Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load tasks error:', e);
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function showCreateTaskModal() {
+    document.getElementById('taskModalTitle').textContent = 'Create Task';
+    document.getElementById('taskSubmitBtn').textContent = 'Create Task';
+    document.getElementById('taskForm')?.reset();
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function editTask(task) {
+    document.getElementById('taskModalTitle').textContent = 'Edit Task';
+    document.getElementById('taskSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskTitle').value = task.title || '';
+    document.getElementById('taskDescription').value = task.description || '';
+    document.getElementById('taskType').value = task.type || 'streaming';
+    document.getElementById('taskCategory').value = task.category || 'general';
+    document.getElementById('taskPoints').value = task.points || 0;
+    document.getElementById('taskXp').value = task.xp || 0;
+    document.getElementById('taskDifficulty').value = task.difficulty || 'easy';
+    document.getElementById('taskProof').value = task.required_proof || 'none';
+    document.getElementById('taskTargetUrl').value = task.target_url || '';
+    document.getElementById('taskTargetHashtag').value = task.target_hashtag || '';
+    document.getElementById('taskMaxCompletions').value = task.max_completions || 1;
+    document.getElementById('taskStatus').value = task.status || 'active';
+    document.getElementById('taskStartDate').value = task.start_date ? task.start_date.split('T')[0] : '';
+    document.getElementById('taskEndDate').value = task.end_date ? task.end_date.split('T')[0] : '';
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function closeTaskModal() {
+    document.getElementById('taskModal')?.classList.remove('active');
+}
+
+async function submitTaskForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('taskId').value;
+    const isEdit = !!id;
+    const payload = {
+        title: document.getElementById('taskTitle').value.trim(),
+        description: document.getElementById('taskDescription').value.trim(),
+        type: document.getElementById('taskType').value,
+        category: document.getElementById('taskCategory').value.trim() || 'general',
+        points: parseInt(document.getElementById('taskPoints').value) || 0,
+        xp: parseInt(document.getElementById('taskXp').value) || 0,
+        difficulty: document.getElementById('taskDifficulty').value,
+        requiredProof: document.getElementById('taskProof').value,
+        targetUrl: document.getElementById('taskTargetUrl').value.trim() || null,
+        targetHashtag: document.getElementById('taskTargetHashtag').value.trim() || null,
+        maxCompletions: parseInt(document.getElementById('taskMaxCompletions').value) || 1,
+        startDate: document.getElementById('taskStartDate').value || null,
+        endDate: document.getElementById('taskEndDate').value || null
+    };
+    if (isEdit) {
+        // PUT uses snake_case (allowed list); translate
+        payload.required_proof = payload.requiredProof; delete payload.requiredProof;
+        payload.target_url = payload.targetUrl; delete payload.targetUrl;
+        payload.target_hashtag = payload.targetHashtag; delete payload.targetHashtag;
+        payload.max_completions = payload.maxCompletions; delete payload.maxCompletions;
+        payload.start_date = payload.startDate; delete payload.startDate;
+        payload.end_date = payload.endDate; delete payload.endDate;
+        payload.status = document.getElementById('taskStatus').value;
+    }
+    try {
+        const res = await fetch(`/api/admin/tasks${isEdit ? `/${id}` : ''}`, {
+            method: isEdit ? 'PUT' : 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to save task');
+            return;
+        }
+        showSuccessModal(isEdit ? 'Task Updated' : 'Task Created', data.title || payload.title);
+        closeTaskModal();
+        loadTasks();
+        loadTaskStats();
+    } catch (e) {
+        console.error('Save task error:', e);
+        alert('Network error');
+    }
+}
+
+async function deleteTask(id) {
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+    try {
+        const res = await fetch(`/api/admin/tasks/${id}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to delete task (superadmin required)');
+            return;
+        }
+        showSuccessModal('Task Deleted', `Task #${id} removed`);
+        loadTasks();
+        loadTaskStats();
+    } catch (e) {
+        console.error('Delete task error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── MULTIPLIERS ─────────────────────────────────────────────────────
+async function loadMultipliers() {
+    const tbody = document.getElementById('multipliersTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 3, 7);
+    try {
+        const res = await fetch('/api/admin/multipliers', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Failed to load multipliers</td></tr>';
+            return;
+        }
+        const items = await res.json();
+        if (!Array.isArray(items) || items.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="7">
+                    <div class="empty-state">
+                        <div class="empty-state__title">No multipliers configured</div>
+                        <div class="empty-state__description">Multipliers boost task points during a campaign window.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = items.map(m => `
+            <tr>
+                <td data-label="Title"><strong>${escapeHtml(m.title)}</strong></td>
+                <td data-label="Multiplier">×${m.multiplier}</td>
+                <td data-label="Applies To">${escapeHtml(m.applies_to || 'all')}</td>
+                <td data-label="Start">${formatDate(m.start_date) || '-'}</td>
+                <td data-label="End">${formatDate(m.end_date) || '-'}</td>
+                <td data-label="Created By">${escapeHtml(m.created_by || '-')}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-danger" onclick="deleteMultiplier(${m.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load multipliers error:', e);
+    }
+}
+
+function showCreateMultiplierModal() {
+    document.getElementById('multiplierForm')?.reset();
+    document.getElementById('multiplierModal').classList.add('active');
+}
+
+function closeMultiplierModal() {
+    document.getElementById('multiplierModal')?.classList.remove('active');
+}
+
+async function submitMultiplierForm(e) {
+    e.preventDefault();
+    const payload = {
+        title: document.getElementById('multTitle').value.trim(),
+        multiplier: parseFloat(document.getElementById('multValue').value) || 1.5,
+        appliesTo: document.getElementById('multAppliesTo').value,
+        startDate: document.getElementById('multStartDate').value,
+        endDate: document.getElementById('multEndDate').value
+    };
+    try {
+        const res = await fetch('/api/admin/multipliers', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to create multiplier'); return; }
+        showSuccessModal('Multiplier Created', `×${payload.multiplier} on ${payload.appliesTo}`);
+        closeMultiplierModal();
+        loadMultipliers();
+    } catch (e) {
+        console.error('Save multiplier error:', e);
+        alert('Network error');
+    }
+}
+
+async function deleteMultiplier(id) {
+    if (!confirm('Delete this multiplier?')) return;
+    try {
+        const res = await fetch(`/api/admin/multipliers/${id}`, {
+            method: 'DELETE', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to delete multiplier (superadmin required)'); return; }
+        showSuccessModal('Multiplier Deleted', `#${id} removed`);
+        loadMultipliers();
+    } catch (e) {
+        console.error('Delete multiplier error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── TASK FRAUD ──────────────────────────────────────────────────────
+async function loadTaskFraud() {
+    const tbody = document.getElementById('taskFraudTableBody');
+    const summaryEl = document.getElementById('taskFraudSummary');
+    const fraudCount = document.getElementById('taskStatFraud');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 3, 6);
+    try {
+        const res = await fetch('/api/admin/task-fraud', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Failed to load fraud data</td></tr>';
+            return;
+        }
+        const { summary = {}, flags = [] } = await res.json();
+        if (summaryEl) {
+            summaryEl.innerHTML = `
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">
+                    <div><strong>${summary.open_flags ?? 0}</strong><div class="text-muted" style="font-size:0.75rem;">Open Flags</div></div>
+                    <div><strong>${summary.resolved_flags ?? 0}</strong><div class="text-muted" style="font-size:0.75rem;">Resolved</div></div>
+                    <div><strong>${summary.high_severity ?? 0}</strong><div class="text-muted" style="font-size:0.75rem;">High Severity</div></div>
+                </div>`;
+        }
+        if (fraudCount) fraudCount.textContent = (summary.open_flags ?? 0).toLocaleString();
+        if (!flags.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:24px;">No open fraud flags 🎉</td></tr>';
+            return;
+        }
+        tbody.innerHTML = flags.map(f => `
+            <tr>
+                <td data-label="Flagged">${formatDate(f.created_at) || '-'}</td>
+                <td data-label="User">#${f.user_id}</td>
+                <td data-label="Reason">${escapeHtml(f.reason || '-')}</td>
+                <td data-label="Severity"><span class="badge badge-${f.severity === 'high' ? 'revoked' : 'frozen'}">${escapeHtml(f.severity || 'low')}</span></td>
+                <td data-label="Details" class="text-muted" style="max-width:240px;">${escapeHtml((f.details || '').slice(0, 120))}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-success" onclick="resolveTaskFraud(${f.id}, 'reviewed')">Resolve</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load fraud error:', e);
+    }
+}
+
+async function resolveTaskFraud(id, resolution) {
+    const notes = prompt('Resolution notes (optional):') || '';
+    try {
+        const res = await fetch(`/api/admin/task-fraud/${id}/resolve`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ resolution, notes })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to resolve flag'); return; }
+        showSuccessModal('Flag Resolved', `#${id} marked ${resolution}`);
+        loadTaskFraud();
+    } catch (e) {
+        console.error('Resolve fraud error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── VERIFICATIONS ───────────────────────────────────────────────────
+async function loadVerifications() {
+    const tbody = document.getElementById('verificationsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 6);
+    try {
+        const res = await fetch('/api/admin/verifications', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Failed to load verifications</td></tr>';
+            return;
+        }
+        const items = await res.json();
+        if (!Array.isArray(items) || items.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="6">
+                    <div class="empty-state">
+                        <svg class="empty-state__icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <path d="M9 12l2 2 4-4"/>
+                        </svg>
+                        <div class="empty-state__title">Queue is clear</div>
+                        <div class="empty-state__description">No verifications waiting for manual review.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = items.map(v => {
+            const proofPreview = v.proof_url
+                ? `<a href="${escapeHtml(v.proof_url)}" target="_blank" rel="noopener noreferrer">Open Link</a>`
+                : v.proof_data
+                    ? `<code style="font-size:0.75rem;">${escapeHtml(String(v.proof_data).slice(0, 80))}</code>`
+                    : '<span class="text-muted">—</span>';
+            const autoResult = v.auto_result == null
+                ? '<span class="text-muted">pending</span>'
+                : v.auto_result
+                    ? '<span class="badge badge-active">passed</span>'
+                    : '<span class="badge badge-revoked">failed</span>';
+            return `
+                <tr>
+                    <td data-label="Submitted">${formatDate(v.created_at) || '-'}</td>
+                    <td data-label="User"><strong>${escapeHtml(v.user_name || '')}</strong><br><span class="text-muted" style="font-size:0.75rem;">${escapeHtml(v.email || '')}</span></td>
+                    <td data-label="Task">${escapeHtml(v.task_title || '')}<br><span class="text-muted" style="font-size:0.75rem;">${escapeHtml(v.task_type || '')}</span></td>
+                    <td data-label="Proof">${proofPreview}</td>
+                    <td data-label="Auto-Result">${autoResult}</td>
+                    <td data-label="Actions">
+                        <button class="btn btn-sm btn-success" onclick="reviewVerification(${v.id}, 'approved')">Approve</button>
+                        <button class="btn btn-sm btn-danger" onclick="reviewVerification(${v.id}, 'rejected')">Reject</button>
+                    </td>
+                </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('Load verifications error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+async function reviewVerification(id, result) {
+    const notes = prompt(`Notes for ${result} (optional):`) || '';
+    try {
+        const res = await fetch(`/api/admin/verifications/${id}/review`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ result, notes })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to review verification'); return; }
+        showSuccessModal('Verification Reviewed', `#${id} ${result}`);
+        loadVerifications();
+    } catch (e) {
+        console.error('Review verification error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── REWARDS ─────────────────────────────────────────────────────────
+async function loadRewardsPage() {
+    loadRewardStats();
+    loadRewards();
+}
+
+async function loadRewardStats() {
+    try {
+        const res = await fetch('/api/admin/rewards/stats', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) return;
+        const stats = await res.json();
+        document.getElementById('rewardStatTotal').textContent = (stats.total_rewards ?? stats.total ?? 0).toLocaleString();
+        document.getElementById('rewardStatActive').textContent = (stats.active_rewards ?? stats.active ?? 0).toLocaleString();
+        document.getElementById('rewardStatRedemptions').textContent = (stats.total_redemptions ?? stats.redemptions ?? 0).toLocaleString();
+        document.getElementById('rewardStatPoints').textContent = (stats.total_points_spent ?? stats.points_spent ?? 0).toLocaleString();
+    } catch (e) {
+        console.error('Reward stats error:', e);
+    }
+}
+
+async function loadRewards() {
+    const tbody = document.getElementById('rewardsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 7);
+    try {
+        const res = await fetch('/api/admin/rewards', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Failed to load rewards</td></tr>';
+            return;
+        }
+        const rewards = await res.json();
+        if (!Array.isArray(rewards) || rewards.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="7">
+                    <div class="empty-state">
+                        <div class="empty-state__title">No rewards yet</div>
+                        <div class="empty-state__description">Add the first reward fans can redeem with points.</div>
+                    </div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = rewards.map(r => `
+            <tr>
+                <td data-label="Title"><strong>${escapeHtml(r.title)}</strong></td>
+                <td data-label="Category">${escapeHtml(r.category || '-')}</td>
+                <td data-label="Cost">${(r.points_cost || 0).toLocaleString()} pts</td>
+                <td data-label="Tier">${escapeHtml(r.tier_required || 'fan')}</td>
+                <td data-label="Inventory">${r.inventory === -1 ? '∞' : (r.inventory ?? 0)}</td>
+                <td data-label="Active">${r.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">paused</span>'}</td>
+                <td data-label="Actions">
+                    <button class="btn btn-sm btn-secondary" onclick='editReward(${JSON.stringify(r)})'>Edit</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load rewards error:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function showCreateRewardModal() {
+    document.getElementById('rewardModalTitle').textContent = 'Create Reward';
+    document.getElementById('rewardSubmitBtn').textContent = 'Create Reward';
+    document.getElementById('rewardForm')?.reset();
+    document.getElementById('rewardId').value = '';
+    document.getElementById('rewardModal').classList.add('active');
+}
+
+function editReward(reward) {
+    document.getElementById('rewardModalTitle').textContent = 'Edit Reward';
+    document.getElementById('rewardSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('rewardId').value = reward.id;
+    document.getElementById('rewardTitle').value = reward.title || '';
+    document.getElementById('rewardDescription').value = reward.description || '';
+    document.getElementById('rewardCategory').value = reward.category || 'general';
+    document.getElementById('rewardTier').value = reward.tier_required || 'fan';
+    document.getElementById('rewardCost').value = reward.points_cost || 0;
+    document.getElementById('rewardInventory').value = reward.inventory ?? -1;
+    document.getElementById('rewardImage').value = reward.image_url || '';
+    document.getElementById('rewardInstructions').value = reward.redemption_instructions || '';
+    document.getElementById('rewardModal').classList.add('active');
+}
+
+function closeRewardModal() {
+    document.getElementById('rewardModal')?.classList.remove('active');
+}
+
+async function submitRewardForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('rewardId').value;
+    const isEdit = !!id;
+    // POST uses camelCase, PUT uses snake_case (allowed list)
+    const base = {
+        title: document.getElementById('rewardTitle').value.trim(),
+        description: document.getElementById('rewardDescription').value.trim(),
+        category: document.getElementById('rewardCategory').value,
+        pointsCost: parseInt(document.getElementById('rewardCost').value) || 0,
+        tierRequired: document.getElementById('rewardTier').value,
+        inventory: parseInt(document.getElementById('rewardInventory').value) || -1,
+        imageUrl: document.getElementById('rewardImage').value.trim() || null,
+        redemptionInstructions: document.getElementById('rewardInstructions').value.trim()
+    };
+    let payload = base;
+    if (isEdit) {
+        payload = {
+            title: base.title,
+            description: base.description,
+            category: base.category,
+            points_cost: base.pointsCost,
+            tier_required: base.tierRequired,
+            inventory: base.inventory,
+            image_url: base.imageUrl,
+            redemption_instructions: base.redemptionInstructions
+        };
+    }
+    try {
+        const res = await fetch(`/api/admin/rewards${isEdit ? `/${id}` : ''}`, {
+            method: isEdit ? 'PUT' : 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) { alert(data.error || 'Failed to save reward'); return; }
+        showSuccessModal(isEdit ? 'Reward Updated' : 'Reward Created', data.title || base.title);
+        closeRewardModal();
+        loadRewards();
+        loadRewardStats();
+    } catch (e) {
+        console.error('Save reward error:', e);
+        alert('Network error');
+    }
+}
+
+// ─── FAN ANALYTICS ───────────────────────────────────────────────────
+async function loadFanAnalytics() {
+    const tierEl = document.getElementById('fanTierDistribution');
+    const topEl = document.getElementById('fanTopContributors');
+    if (!tierEl || !topEl) return;
+    try {
+        const res = await fetch('/api/admin/fan-analytics', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tierEl.innerHTML = '<div style="color:#ef4444;">Failed to load</div>';
+            topEl.innerHTML = '<div style="color:#ef4444;">Failed to load</div>';
+            return;
+        }
+        const data = await res.json();
+        renderTierDistribution(data.tierDistribution || []);
+        renderTopContributors(data.topFans || []);
+    } catch (e) {
+        console.error('Fan analytics error:', e);
+    }
+}
+
+function renderTierDistribution(data) {
+    const el = document.getElementById('fanTierDistribution');
+    if (!el) return;
+    if (!data.length) {
+        el.innerHTML = '<div style="color:#666;">No tier data yet</div>';
+        return;
+    }
+    const total = data.reduce((s, t) => s + (t.count || 0), 0) || 1;
+    el.innerHTML = data.map(t => {
+        const pct = ((t.count || 0) / total * 100).toFixed(1);
+        return `
+            <div style="margin-bottom:12px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span>${escapeHtml(t.current_tier || 'unranked')}</span>
+                    <span class="text-muted">${(t.count || 0).toLocaleString()} (${pct}%)</span>
+                </div>
+                <div style="height:6px;background:rgba(255,255,255,0.05);border-radius:3px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:var(--accent, #A2812E);"></div>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function renderTopContributors(data) {
+    const el = document.getElementById('fanTopContributors');
+    if (!el) return;
+    if (!data.length) {
+        el.innerHTML = '<div style="color:#666;">No contributors yet</div>';
+        return;
+    }
+    el.innerHTML = data.slice(0, 8).map((f, i) => `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span><strong style="color:var(--text-muted);margin-right:8px;">#${i + 1}</strong>${escapeHtml(f.name || f.email || 'Unknown')}</span>
+            <span style="color:var(--accent);font-weight:600;">${(f.total_score || 0).toLocaleString()}</span>
+        </div>
+    `).join('');
+}
+
+// ─── LEADERBOARD REFRESH ─────────────────────────────────────────────
+async function refreshLeaderboard() {
+    const btn = document.getElementById('refreshLeaderboardBtn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    try {
+        const res = await fetch('/api/admin/leaderboard/refresh', {
+            method: 'POST', credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to refresh leaderboard');
+            return;
+        }
+        showSuccessModal('Leaderboard Refreshed', 'Rankings updated');
+        loadLeaderboard();
+    } catch (e) {
+        console.error('Refresh leaderboard error:', e);
+        alert('Network error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+}
+
+// ─── EVENT WIRING (Tier 1) ───────────────────────────────────────────
+document.getElementById('newTaskBtn')?.addEventListener('click', showCreateTaskModal);
+document.getElementById('newMultiplierBtn')?.addEventListener('click', showCreateMultiplierModal);
+document.getElementById('newRewardBtn')?.addEventListener('click', showCreateRewardModal);
+document.getElementById('closeTaskModalBtn')?.addEventListener('click', closeTaskModal);
+document.getElementById('closeMultiplierModalBtn')?.addEventListener('click', closeMultiplierModal);
+document.getElementById('closeRewardModalBtn')?.addEventListener('click', closeRewardModal);
+document.getElementById('taskForm')?.addEventListener('submit', submitTaskForm);
+document.getElementById('multiplierForm')?.addEventListener('submit', submitMultiplierForm);
+document.getElementById('rewardForm')?.addEventListener('submit', submitRewardForm);
+document.getElementById('applyTaskFiltersBtn')?.addEventListener('click', loadTasks);
+document.getElementById('refreshLeaderboardBtn')?.addEventListener('click', refreshLeaderboard);
+
+// Tasks sub-tab switcher
+document.querySelectorAll('[data-tasks-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchTasksTab(btn.dataset.tasksTab));
+});
 

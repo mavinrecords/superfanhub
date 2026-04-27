@@ -390,6 +390,33 @@
                     </svg>
                     <span class="nav-label">Campaigns</span>
                 </div>
+                <div class="nav-item" data-page="tasks">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M9 11l3 3L22 4" />
+                        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                    </svg>
+                    <span class="nav-label">Tasks</span>
+                </div>
+                <div class="nav-item" data-page="verifications">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M9 12l2 2 4-4" />
+                    </svg>
+                    <span class="nav-label">Verifications</span>
+                </div>
+                <div class="nav-item" data-page="rewards">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M20 12v10H4V12" />
+                        <path d="M2 7h20v5H2z" />
+                        <path d="M12 22V7" />
+                        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                    </svg>
+                    <span class="nav-label">Rewards</span>
+                </div>
                 <div class="nav-item" data-page="loyalty">
                     <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -924,6 +951,21 @@
                             <div id="expiringCards" style="font-size: 0.875rem;"></div>
                         </div>
                     </div>
+
+                    <!-- Fan Analytics Section -->
+                    <div class="page-header" style="margin-top: 32px; margin-bottom: 16px;">
+                        <h2 style="font-size: 1.25rem;">Fan Engagement</h2>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Tier Distribution</h3>
+                            <div id="fanTierDistribution" style="font-size: 0.875rem;">Loading...</div>
+                        </div>
+                        <div class="card" style="padding: 20px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1rem; color: #888;">Top Contributors</h3>
+                            <div id="fanTopContributors" style="font-size: 0.875rem;">Loading...</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Promos Page (Old Campaigns) -->
@@ -1059,6 +1101,417 @@
                     </div>
                 </div>
 
+                <!-- Tasks Page (Tasks / Multipliers / Fraud) -->
+                <div id="tasksPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Tasks</h1>
+                        <div class="flex gap-md">
+                            <button class="btn btn-secondary" id="newMultiplierBtn">+ New Multiplier</button>
+                            <button class="btn btn-primary" id="newTaskBtn">+ New Task</button>
+                        </div>
+                    </div>
+
+                    <div class="stats-grid" id="tasksStatsRow" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Tasks</div>
+                            <div class="stat-value" id="taskStatTotal">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active</div>
+                            <div class="stat-value" id="taskStatActive">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Completions</div>
+                            <div class="stat-value" id="taskStatCompletions">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Open Fraud Flags</div>
+                            <div class="stat-value" id="taskStatFraud">-</div>
+                        </div>
+                    </div>
+
+                    <div class="tabs" style="margin-bottom:16px;">
+                        <button class="tab active" data-tasks-tab="list">Tasks</button>
+                        <button class="tab" data-tasks-tab="multipliers">Multipliers</button>
+                        <button class="tab" data-tasks-tab="fraud">Fraud Flags</button>
+                    </div>
+
+                    <!-- Tasks list tab -->
+                    <div id="tasksTabList" class="tasks-tab-content">
+                        <div class="filter-bar">
+                            <select id="taskStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="active">Active</option>
+                                <option value="paused">Paused</option>
+                                <option value="ended">Ended</option>
+                                <option value="draft">Draft</option>
+                            </select>
+                            <select id="taskTypeFilter">
+                                <option value="">All Types</option>
+                                <option value="streaming">Streaming</option>
+                                <option value="social">Social</option>
+                                <option value="event">Event</option>
+                                <option value="content">Content</option>
+                                <option value="quiz">Quiz</option>
+                                <option value="other">Other</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" id="applyTaskFiltersBtn">Apply</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Type</th>
+                                            <th>Points</th>
+                                            <th>Difficulty</th>
+                                            <th>Status</th>
+                                            <th>Proof</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tasksTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Multipliers tab -->
+                    <div id="tasksTabMultipliers" class="tasks-tab-content hidden">
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Title</th>
+                                            <th>Multiplier</th>
+                                            <th>Applies To</th>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                            <th>Created By</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="multipliersTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fraud tab -->
+                    <div id="tasksTabFraud" class="tasks-tab-content hidden">
+                        <div class="card" style="margin-bottom:16px;">
+                            <h3 style="margin-bottom:var(--space-md);">Fraud Summary</h3>
+                            <div id="taskFraudSummary" class="text-muted">Loading...</div>
+                        </div>
+                        <div class="card">
+                            <h3 style="margin-bottom:var(--space-md);">Open Fraud Flags</h3>
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Flagged</th>
+                                            <th>User</th>
+                                            <th>Reason</th>
+                                            <th>Severity</th>
+                                            <th>Details</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="taskFraudTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Task Modal -->
+                <div class="modal-overlay" id="taskModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 id="taskModalTitle">Create Task</h3>
+                            <button class="modal-close" id="closeTaskModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="taskForm">
+                                <input type="hidden" id="taskId">
+                                <div class="form-group">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" id="taskTitle" class="form-input" required enterkeyhint="next">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="taskDescription" class="form-input" rows="3"></textarea>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Type</label>
+                                        <select id="taskType" class="form-input" required>
+                                            <option value="streaming">Streaming</option>
+                                            <option value="social">Social</option>
+                                            <option value="event">Event</option>
+                                            <option value="content">Content</option>
+                                            <option value="quiz">Quiz</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Category</label>
+                                        <input type="text" id="taskCategory" class="form-input" placeholder="general">
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Points</label>
+                                        <input type="number" id="taskPoints" class="form-input" value="100" min="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">XP</label>
+                                        <input type="number" id="taskXp" class="form-input" value="0" min="0">
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Difficulty</label>
+                                        <select id="taskDifficulty" class="form-input">
+                                            <option value="easy">Easy</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="hard">Hard</option>
+                                            <option value="expert">Expert</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Required Proof</label>
+                                        <select id="taskProof" class="form-input">
+                                            <option value="none">None</option>
+                                            <option value="url">URL</option>
+                                            <option value="hashtag">Hashtag</option>
+                                            <option value="screenshot">Screenshot</option>
+                                            <option value="qr_scan">QR Scan</option>
+                                            <option value="manual">Manual Review</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Target URL (optional)</label>
+                                    <input type="url" id="taskTargetUrl" class="form-input" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Target Hashtag (optional)</label>
+                                    <input type="text" id="taskTargetHashtag" class="form-input" placeholder="#mavinforever">
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Max Completions / User</label>
+                                        <input type="number" id="taskMaxCompletions" class="form-input" value="1" min="1">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Status</label>
+                                        <select id="taskStatus" class="form-input">
+                                            <option value="active">Active</option>
+                                            <option value="paused">Paused</option>
+                                            <option value="ended">Ended</option>
+                                            <option value="draft">Draft</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Date</label>
+                                        <input type="date" id="taskStartDate" class="form-input">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" id="taskEndDate" class="form-input">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="taskSubmitBtn">Create Task</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Multiplier Modal -->
+                <div class="modal-overlay" id="multiplierModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3>Create Campaign Multiplier</h3>
+                            <button class="modal-close" id="closeMultiplierModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="multiplierForm">
+                                <div class="form-group">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" id="multTitle" class="form-input" required>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Multiplier</label>
+                                        <input type="number" id="multValue" class="form-input" value="1.5" min="1" step="0.1" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Applies To</label>
+                                        <select id="multAppliesTo" class="form-input">
+                                            <option value="all">All Tasks</option>
+                                            <option value="streaming">Streaming</option>
+                                            <option value="social">Social</option>
+                                            <option value="event">Event</option>
+                                            <option value="content">Content</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Start Date</label>
+                                        <input type="date" id="multStartDate" class="form-input" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">End Date</label>
+                                        <input type="date" id="multEndDate" class="form-input" required>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full">Create Multiplier</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verifications Page -->
+                <div id="verificationsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Verification Queue</h1>
+                        <p class="text-muted" style="margin-top:4px;">Manual moderation of task proofs awaiting review.</p>
+                    </div>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Submitted</th>
+                                        <th>User</th>
+                                        <th>Task</th>
+                                        <th>Proof</th>
+                                        <th>Auto-Result</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="verificationsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rewards Page -->
+                <div id="rewardsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Rewards Catalog</h1>
+                        <button class="btn btn-primary" id="newRewardBtn">+ New Reward</button>
+                    </div>
+
+                    <div class="stats-grid" style="margin-bottom:24px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Total Rewards</div>
+                            <div class="stat-value" id="rewardStatTotal">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Active</div>
+                            <div class="stat-value" id="rewardStatActive">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Redemptions</div>
+                            <div class="stat-value" id="rewardStatRedemptions">-</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Points Spent</div>
+                            <div class="stat-value" id="rewardStatPoints">-</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Title</th>
+                                        <th>Category</th>
+                                        <th>Cost</th>
+                                        <th>Tier</th>
+                                        <th>Inventory</th>
+                                        <th>Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="rewardsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reward Modal -->
+                <div class="modal-overlay" id="rewardModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 id="rewardModalTitle">Create Reward</h3>
+                            <button class="modal-close" id="closeRewardModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="rewardForm">
+                                <input type="hidden" id="rewardId">
+                                <div class="form-group">
+                                    <label class="form-label">Title</label>
+                                    <input type="text" id="rewardTitle" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Description</label>
+                                    <textarea id="rewardDescription" class="form-input" rows="3"></textarea>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Category</label>
+                                        <select id="rewardCategory" class="form-input">
+                                            <option value="merch">Merch</option>
+                                            <option value="experience">Experience</option>
+                                            <option value="digital">Digital</option>
+                                            <option value="discount">Discount</option>
+                                            <option value="general">General</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Tier Required</label>
+                                        <select id="rewardTier" class="form-input">
+                                            <option value="fan">Fan</option>
+                                            <option value="superfan">SuperFan</option>
+                                            <option value="elite">Elite</option>
+                                            <option value="inner_circle">Inner Circle</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Points Cost</label>
+                                        <input type="number" id="rewardCost" class="form-input" value="1000" min="0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Inventory (-1 = unlimited)</label>
+                                        <input type="number" id="rewardInventory" class="form-input" value="-1">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Image URL (optional)</label>
+                                    <input type="url" id="rewardImage" class="form-input" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Redemption Instructions</label>
+                                    <textarea id="rewardInstructions" class="form-input" rows="2" placeholder="How users redeem this reward"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="rewardSubmitBtn">Create Reward</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Loyalty Page -->
                 <div id="loyaltyPage" class="page hidden">
                     <div class="page-header">
@@ -1149,7 +1602,19 @@
 
                     <!-- Leaderboard -->
                     <div class="card mt-xl">
-                        <h3 style="margin-bottom:var(--space-lg);">Top Fans Leaderboard</h3>
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-lg);">
+                            <h3 style="margin:0;">Top Fans Leaderboard</h3>
+                            <button class="btn btn-secondary btn-sm" id="refreshLeaderboardBtn" type="button">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+                                     style="vertical-align:-2px;margin-right:4px;">
+                                    <polyline points="23 4 23 10 17 10"/>
+                                    <polyline points="1 20 1 14 7 14"/>
+                                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                                </svg>
+                                Refresh
+                            </button>
+                        </div>
                         <div id="leaderboardList">
                             <p style="color:var(--text-muted);">Loading leaderboard...</p>
                         </div>

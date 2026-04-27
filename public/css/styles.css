@@ -58,6 +58,23 @@
   --border-subtle: rgba(255, 255, 255, 0.05);
   --border-focus: var(--accent);
 
+  /* ----------------------------------------------------------------
+     Legacy variable aliases. The marketing landing page (home.css) and
+     several `<style>` blocks inside individual HTML files (tasks.html,
+     dashboard.html, gift-cards.html, login.html, register.html, ...)
+     reference these names. Without these aliases, `color: var(--text-white)`
+     resolves to nothing → cascades to UA-default → black text on white
+     UA-default input background — which is the "form text turns black"
+     bug across every form on every page that isn't index.html.
+     Defined here in styles.css so they exist on every page.
+     ---------------------------------------------------------------- */
+  --text-white: var(--text-primary);
+  --text-gray: var(--text-muted);
+  --mavin-gold: var(--accent);
+  --mavin-gold-light: var(--accent-hover);
+  --font-main: var(--font-sans);
+  --border-color: var(--border);
+
   /* Shadows */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.6);

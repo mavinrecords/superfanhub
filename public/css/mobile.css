@@ -152,6 +152,28 @@
 /* ----------------------------------------------------------------------------
    M0-9 — Input autofill + placeholder contrast on dark theme
    ---------------------------------------------------------------------------- */
+
+/* Catch-all default for any text-like input that doesn't carry an explicit
+   form class (.form-input, .modal-input, .code-input). Several admin filters
+   in admin.html and inline forms across pages are bare `<select id="...">` —
+   without this, they render with UA-default white background + black text on
+   the dark theme, which is the "form text turns black" bug.
+
+   Class-scoped rules like .form-input keep their higher specificity and win.
+   We exclude buttons/checkboxes/radios/files so we don't repaint native
+   widgets that should stay native.
+   ---------------------------------------------------------------------------- */
+input:not([type=button]):not([type=submit]):not([type=reset]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=image]):not([type=color]):not([type=range]),
+textarea,
+select {
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    /* Tells Firefox / WebKit to render native widgets (calendar pickers,
+       option dropdowns, scrollbars inside selects) in dark mode. */
+    color-scheme: dark;
+}
+
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -164,6 +186,17 @@ select:-webkit-autofill {
     /* Defeat Chrome's slow yellow fade-in */
     transition: background-color 5000s ease-in-out 0s;
 }
+/* Firefox autofill — uses :autofill (no -webkit- prefix) and a different
+   override mechanism. Without this, FF autofilled inputs render with their
+   default tinted yellow + black-text combo on the dark theme. */
+input:autofill,
+textarea:autofill,
+select:autofill {
+    box-shadow: 0 0 0 100px var(--bg-elevated) inset;
+    -webkit-text-fill-color: var(--text-primary);
+    color: var(--text-primary) !important;
+}
+
 ::placeholder {
     color: var(--text-muted);
     opacity: 1; /* Firefox sets default opacity to less than 1 */

@@ -454,6 +454,14 @@
                     </svg>
                     <span class="nav-label">SuperFans</span>
                 </div>
+                <div class="nav-item" data-page="comms">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <span class="nav-label">Communication</span>
+                </div>
             </nav>
 
             <div class="user-info">
@@ -1892,7 +1900,7 @@
                 <div id="superfansPage" class="page hidden">
                     <div class="page-header">
                         <h1>SuperFan Hub Users</h1>
-                        <div style="display:flex;gap:12px;">
+                        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
                             <input type="search" class="form-input" id="superfanSearch" placeholder="Search users..."
                                 inputmode="search" autocomplete="off" autocapitalize="none" autocorrect="off"
                                 spellcheck="false" enterkeyhint="search" style="width:250px;">
@@ -1904,6 +1912,7 @@
                                 <option value="platinum">Platinum</option>
                                 <option value="diamond">Diamond</option>
                             </select>
+                            <button type="button" class="btn btn-primary btn-sm" id="adminCreateUserBtn">+ Create User</button>
                         </div>
                     </div>
 
@@ -2003,8 +2012,92 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Communication Page (Tier 4) -->
+                <div id="commsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Communication</h1>
+                        <p class="text-muted" style="margin-top:4px;">Send a one-shot email blast to a slice of the user base. Suspended users are always excluded.</p>
+                    </div>
+
+                    <div class="card">
+                        <form id="broadcastForm">
+                            <div class="form-group">
+                                <label class="form-label">Audience</label>
+                                <select id="broadcastAudience" class="form-input">
+                                    <option value="all">All Active Users</option>
+                                    <option value="verified">Verified Users Only</option>
+                                    <option value="tier:fan">Tier: Fan</option>
+                                    <option value="tier:superfan">Tier: SuperFan</option>
+                                    <option value="tier:elite">Tier: Elite</option>
+                                    <option value="tier:inner_circle">Tier: Inner Circle</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Subject</label>
+                                <input type="text" id="broadcastSubject" class="form-input" required maxlength="120" placeholder="Subject line">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Body</label>
+                                <textarea id="broadcastBody" class="form-input" rows="10" required
+                                          placeholder="Your message. Plain text or HTML — we'll wrap plain text in a Mavin email shell automatically."></textarea>
+                                <small class="text-muted">Newlines become &lt;br&gt; in plain-text mode. Paste raw HTML to skip the wrapper.</small>
+                            </div>
+                            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                                <button type="button" class="btn btn-secondary" id="broadcastPreviewBtn">Preview audience</button>
+                                <button type="submit" class="btn btn-primary" id="broadcastSendBtn">Send broadcast</button>
+                            </div>
+                        </form>
+                        <div id="broadcastPreviewArea" style="margin-top:24px;display:none;"></div>
+                        <div id="broadcastResultArea" style="margin-top:24px;display:none;"></div>
+                    </div>
+                </div>
             </div>
         </main>
+    </div>
+
+    <!-- User Admin Action Modal (Tier 4) -->
+    <div class="modal-overlay" id="userActionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="userActionTitle">User Actions</h3>
+                <button class="modal-close" id="closeUserActionModalBtn">&times;</button>
+            </div>
+            <div class="modal-content" id="userActionContent" style="padding:24px;"></div>
+        </div>
+    </div>
+
+    <!-- Manual Create User Modal (Tier 4) -->
+    <div class="modal-overlay" id="createUserModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Create User Manually</h3>
+                <button class="modal-close" id="closeCreateUserModalBtn">&times;</button>
+            </div>
+            <div class="modal-content" style="padding:24px;">
+                <p class="text-muted" style="margin-bottom:16px;">Bypasses the email verification step — the user can log in immediately with the password you set here. Recommended only for support recovery flows; otherwise have users register themselves.</p>
+                <form id="createUserForm">
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" id="createUserEmail" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Full Name *</label>
+                        <input type="text" id="createUserName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password *</label>
+                        <input type="text" id="createUserPassword" class="form-input" required minlength="8">
+                        <small class="text-muted">Will be bcrypt-hashed before storage. Tell the user their password through a secure channel.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone (optional)</label>
+                        <input type="tel" id="createUserPhone" class="form-input">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full" id="createUserSubmitBtn">Create User</button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- Card Action Modal -->

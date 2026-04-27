@@ -1454,11 +1454,12 @@ async function viewSuperFanDetail(userId) {
                     <div>${user.spotify_user_id ? '✅ Connected' : '❌ Not connected'}</div>
                 </div>
                 <hr style="border-color:rgba(255,255,255,0.1);">
-                <div style="display:flex;gap:8px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button class="btn btn-primary" onclick="addPointsToUser(${userId})">Add Points</button>
                     <button class="btn btn-secondary" onclick="toggleUserCardStatus(${userId})">
-                        ${user.card_status === 'active' ? 'Suspend' : 'Activate'}
+                        ${user.card_status === 'active' ? 'Suspend Card' : 'Activate Card'}
                     </button>
+                    <button class="btn btn-secondary" onclick="openUserAdminActions(${userId}, '${escapeHtml(user.email).replace(/'/g, "\\'")}', '${escapeHtml(user.name || '').replace(/'/g, "\\'")}')">Manage Account</button>
                 </div>
             </div>
         `;
@@ -3173,4 +3174,412 @@ showPage = function patchedShowPageT3(page) {
         loadStreaks();
     }
 };
+
+// ============================================================================
+// Tier 4 — User admin (create / reset password / suspend / delete) + Broadcast
+// ============================================================================
+
+/**
+ * Open the manual-create-user modal.
+ */
+function showCreateUserModal() {
+    const form = document.getElementById('createUserForm');
+    if (form) form.reset();
+    document.getElementById('createUserModal')?.classList.add('active');
+}
+
+function closeCreateUserModal() {
+    document.getElementById('createUserModal')?.classList.remove('active');
+}
+
+/**
+ * Submit handler for the create-user form.
+ * POST /api/admin/users — superadmin-only on the backend.
+ */
+async function submitCreateUserForm(e) {
+    e.preventDefault();
+    const submitBtn = document.getElementById('createUserSubmitBtn');
+    const payload = {
+        email: document.getElementById('createUserEmail').value.trim(),
+        name: document.getElementById('createUserName').value.trim(),
+        password: document.getElementById('createUserPassword').value,
+        phone: document.getElementById('createUserPhone').value.trim() || null
+    };
+
+    if (!payload.email || !payload.name || !payload.password) {
+        alert('Email, name, and password are required.');
+        return;
+    }
+    if (payload.password.length < 8) {
+        alert('Password must be at least 8 characters.');
+        return;
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Creating...'; }
+    try {
+        const res = await fetch('/api/admin/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to create user');
+            return;
+        }
+        closeCreateUserModal();
+        showSuccessModal('User Created', `${payload.email} can now log in.`);
+        if (typeof loadSuperFanUsers === 'function') loadSuperFanUsers();
+    } catch (err) {
+        console.error('Create user error:', err);
+        alert('Network error creating user');
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Create User'; }
+    }
+}
+
+/**
+ * Open the user-admin action modal for an existing user. Renders a card
+ * with Reset Password / Suspend / Unsuspend / Delete buttons. The backend
+ * gates which of these the current admin can actually invoke (suspend /
+ * unsuspend are admin; delete is superadmin).
+ */
+function openUserAdminActions(userId, email, name) {
+    const titleEl = document.getElementById('userActionTitle');
+    const bodyEl = document.getElementById('userActionContent');
+    if (!titleEl || !bodyEl) return;
+
+    titleEl.textContent = `Manage: ${name || email}`;
+    bodyEl.innerHTML = `
+        <div style="display:grid;gap:16px;">
+            <div>
+                <div class="text-muted" style="font-size:0.75rem;margin-bottom:4px;">User</div>
+                <div style="font-weight:600;">${escapeHtml(name || '')}</div>
+                <div class="text-muted" style="font-size:0.85rem;">${escapeHtml(email)}</div>
+                <div class="text-muted" style="font-size:0.7rem;margin-top:4px;">ID #${userId}</div>
+            </div>
+
+            <div style="border-top:1px solid #222;padding-top:16px;">
+                <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Reset Password</h4>
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Generates a one-time temp password. The user is forced to change it on next login. All active sessions are revoked.</p>
+                <button type="button" class="btn btn-secondary" onclick="userResetPassword(${userId})">Reset password</button>
+            </div>
+
+            <div style="border-top:1px solid #222;padding-top:16px;">
+                <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Suspension</h4>
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Suspended users can't log in. Reversible.</p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-warning" onclick="userToggleSuspend(${userId}, true)">Suspend</button>
+                    <button type="button" class="btn btn-secondary" onclick="userToggleSuspend(${userId}, false)">Unsuspend</button>
+                </div>
+            </div>
+
+            <div style="border-top:1px solid #222;padding-top:16px;">
+                <h4 style="margin:0 0 8px 0;font-size:0.9rem;color:#ef4444;">Danger zone</h4>
+                <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Hard-delete cascades through every user-keyed table (sessions, profiles, tasks, redemptions, etc.). Audit log retains a snapshot of the deleted row. This cannot be undone.</p>
+                <button type="button" class="btn btn-danger" onclick="userHardDelete(${userId}, '${email.replace(/'/g, "\\'")}')">Delete User</button>
+            </div>
+        </div>
+    `;
+    document.getElementById('userActionModal')?.classList.add('active');
+}
+
+function closeUserActionModal() {
+    document.getElementById('userActionModal')?.classList.remove('active');
+}
+
+/**
+ * POST /api/admin/users/:id/reset-password — returns the new temp password
+ * once. Show it in a modal so the admin can copy it before it disappears.
+ */
+async function userResetPassword(userId) {
+    if (!confirm('Generate a new temporary password for this user? All their active sessions will be killed.')) return;
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to reset password');
+            return;
+        }
+        // Show the temp password in the modal — this is the only chance
+        // the admin has to capture it. Backend does not store plaintext.
+        const bodyEl = document.getElementById('userActionContent');
+        if (bodyEl) {
+            bodyEl.innerHTML = `
+                <div style="display:grid;gap:16px;">
+                    <div>
+                        <div class="text-muted" style="font-size:0.75rem;margin-bottom:4px;">User</div>
+                        <div style="font-weight:600;">${escapeHtml(data.name || '')}</div>
+                        <div class="text-muted" style="font-size:0.85rem;">${escapeHtml(data.email || '')}</div>
+                    </div>
+                    <div style="background:#1a1a1a;border:1px solid #10b981;padding:16px;border-radius:8px;">
+                        <div style="font-size:0.75rem;color:#10b981;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.05em;">Temporary password (copy now — won't be shown again)</div>
+                        <div style="font-family:monospace;font-size:1.1rem;background:#000;padding:12px;border-radius:6px;user-select:all;word-break:break-all;">${escapeHtml(data.tempPassword)}</div>
+                        <p class="text-muted" style="font-size:0.8rem;margin:12px 0 0 0;">Sessions revoked: ${data.sessionsRevoked || 0}. The user must change this password on next login.</p>
+                    </div>
+                    <button type="button" class="btn btn-primary" onclick="closeUserActionModal()">Done</button>
+                </div>
+            `;
+        }
+    } catch (err) {
+        console.error('Reset password error:', err);
+        alert('Network error resetting password');
+    }
+}
+
+/**
+ * Suspend (true) / unsuspend (false) the target user.
+ */
+async function userToggleSuspend(userId, suspend) {
+    const verb = suspend ? 'suspend' : 'unsuspend';
+    let reason = null;
+    if (suspend) {
+        reason = prompt('Reason for suspension (optional, recorded in audit log):') || null;
+    }
+    if (!confirm(`Are you sure you want to ${verb} this user?`)) return;
+
+    try {
+        const res = await fetch(`/api/admin/users/${userId}/${verb}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify(suspend ? { reason } : {})
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || `Failed to ${verb} user`);
+            return;
+        }
+        closeUserActionModal();
+        showSuccessModal(suspend ? 'User Suspended' : 'User Reactivated',
+            suspend ? 'Login disabled, sessions revoked.' : 'Login restored.');
+        if (typeof loadSuperFanUsers === 'function') loadSuperFanUsers();
+    } catch (err) {
+        console.error(`${verb} error:`, err);
+        alert(`Network error trying to ${verb} user`);
+    }
+}
+
+/**
+ * Hard delete with typed-email confirmation.
+ * Backend additionally requires confirmEmail in body to match the user's
+ * actual email — this is a defence-in-depth layer against XHR replay.
+ */
+async function userHardDelete(userId, email) {
+    const typed = prompt(`This will permanently delete the user and cascade through every related table. Type the user's email to confirm:\n\n${email}`);
+    if (!typed) return;
+    if (typed.trim().toLowerCase() !== email.trim().toLowerCase()) {
+        alert('Email did not match — cancelled.');
+        return;
+    }
+    if (!confirm(`FINAL CONFIRMATION:\n\nDelete ${email}?\n\nThis cannot be undone.`)) return;
+
+    try {
+        const res = await fetch(`/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ confirmEmail: typed })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(data.error || 'Failed to delete user');
+            return;
+        }
+        closeUserActionModal();
+        // Also close the SuperFan detail modal if it's open
+        const sfModal = document.getElementById('cardModal');
+        if (sfModal) sfModal.classList.remove('active');
+        showSuccessModal('User Deleted', `${email} and all associated records removed.`);
+        if (typeof loadSuperFanUsers === 'function') loadSuperFanUsers();
+    } catch (err) {
+        console.error('Delete user error:', err);
+        alert('Network error deleting user');
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Email broadcast
+// ----------------------------------------------------------------------------
+
+function _readBroadcastForm() {
+    return {
+        audience: document.getElementById('broadcastAudience').value,
+        subject: document.getElementById('broadcastSubject').value.trim(),
+        body: document.getElementById('broadcastBody').value
+    };
+}
+
+/**
+ * Preview the audience size + first 5 recipients without sending anything.
+ */
+async function previewBroadcast() {
+    const { audience } = _readBroadcastForm();
+    const previewEl = document.getElementById('broadcastPreviewArea');
+    if (!previewEl) return;
+
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = '<p class="text-muted">Loading preview...</p>';
+
+    try {
+        const res = await fetch('/api/admin/broadcast/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ audience })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            previewEl.innerHTML = `<p style="color:#ef4444;">${escapeHtml(data.error || 'Failed to preview audience')}</p>`;
+            return;
+        }
+        const sampleRows = (data.sample || []).map(r =>
+            `<tr><td>${escapeHtml(r.name || '—')}</td><td>${escapeHtml(r.email || '')}</td></tr>`
+        ).join('');
+        previewEl.innerHTML = `
+            <div class="card" style="background:#0f0f0f;border:1px solid #222;">
+                <h4 style="margin:0 0 12px 0;">Audience preview</h4>
+                <div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:16px;">
+                    <div>
+                        <div class="text-muted" style="font-size:0.75rem;">Selector</div>
+                        <div style="font-family:monospace;">${escapeHtml(data.audience)}</div>
+                    </div>
+                    <div>
+                        <div class="text-muted" style="font-size:0.75rem;">Recipients</div>
+                        <div style="font-size:1.5rem;font-weight:700;color:#10b981;">${data.count}</div>
+                    </div>
+                </div>
+                ${data.count === 0 ? '<p class="text-muted">No recipients match this audience selector. Broadcast will be a no-op.</p>' : `
+                <div class="table-container">
+                    <table class="responsive-table">
+                        <thead><tr><th>Name</th><th>Email (sample of first ${data.sample?.length || 0})</th></tr></thead>
+                        <tbody>${sampleRows}</tbody>
+                    </table>
+                </div>`}
+            </div>
+        `;
+    } catch (err) {
+        console.error('Preview broadcast error:', err);
+        previewEl.innerHTML = `<p style="color:#ef4444;">Network error loading preview.</p>`;
+    }
+}
+
+/**
+ * Submit the broadcast. Confirms recipient count first.
+ */
+async function submitBroadcast(e) {
+    e.preventDefault();
+    const { audience, subject, body } = _readBroadcastForm();
+    if (!subject) { alert('Subject is required.'); return; }
+    if (!body || !body.trim()) { alert('Body is required.'); return; }
+
+    // Always preview first so the admin sees the recipient count.
+    let previewData;
+    try {
+        const res = await fetch('/api/admin/broadcast/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ audience })
+        });
+        if (handleAuthExpired(res)) return;
+        previewData = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            alert(previewData.error || 'Failed to preview audience before send.');
+            return;
+        }
+    } catch (err) {
+        console.error('Pre-send preview error:', err);
+        alert('Network error preparing broadcast.');
+        return;
+    }
+
+    if (previewData.count === 0) {
+        alert('No recipients match this audience. Nothing to send.');
+        return;
+    }
+
+    if (!confirm(`Send "${subject}" to ${previewData.count} recipient(s)?\n\nThis will send real emails. Suspended users are excluded automatically.`)) return;
+
+    const sendBtn = document.getElementById('broadcastSendBtn');
+    if (sendBtn) { sendBtn.disabled = true; sendBtn.textContent = 'Sending...'; }
+    const resultEl = document.getElementById('broadcastResultArea');
+    if (resultEl) {
+        resultEl.style.display = 'block';
+        resultEl.innerHTML = '<p class="text-muted">Sending — this may take a minute for large audiences. Don\'t close the page.</p>';
+    }
+
+    try {
+        const res = await fetch('/api/admin/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ audience, subject, body })
+        });
+        if (handleAuthExpired(res)) return;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            if (resultEl) {
+                resultEl.innerHTML = `<p style="color:#ef4444;">${escapeHtml(data.error || 'Broadcast failed')}</p>`;
+            } else {
+                alert(data.error || 'Broadcast failed');
+            }
+            return;
+        }
+        if (resultEl) {
+            resultEl.innerHTML = `
+                <div class="card" style="background:#0f0f0f;border:1px solid #10b981;">
+                    <h4 style="margin:0 0 12px 0;color:#10b981;">Broadcast complete</h4>
+                    <div style="display:flex;gap:24px;flex-wrap:wrap;">
+                        <div><div class="text-muted" style="font-size:0.75rem;">Audience</div><div style="font-family:monospace;">${escapeHtml(data.audience)}</div></div>
+                        <div><div class="text-muted" style="font-size:0.75rem;">Total</div><div>${data.recipients}</div></div>
+                        <div><div class="text-muted" style="font-size:0.75rem;">Sent</div><div style="color:#10b981;font-weight:700;">${data.sent}</div></div>
+                        <div><div class="text-muted" style="font-size:0.75rem;">Failed</div><div style="color:${data.failed ? '#ef4444' : 'inherit'};">${data.failed}</div></div>
+                    </div>
+                </div>
+            `;
+        }
+        showSuccessModal('Broadcast Sent', `${data.sent}/${data.recipients} delivered`);
+    } catch (err) {
+        console.error('Broadcast error:', err);
+        if (resultEl) {
+            resultEl.innerHTML = `<p style="color:#ef4444;">Network error during send.</p>`;
+        } else {
+            alert('Network error sending broadcast');
+        }
+    } finally {
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.textContent = 'Send broadcast'; }
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Event wiring (Tier 4)
+// ----------------------------------------------------------------------------
+
+document.getElementById('adminCreateUserBtn')?.addEventListener('click', showCreateUserModal);
+document.getElementById('closeCreateUserModalBtn')?.addEventListener('click', closeCreateUserModal);
+document.getElementById('createUserForm')?.addEventListener('submit', submitCreateUserForm);
+
+document.getElementById('closeUserActionModalBtn')?.addEventListener('click', closeUserActionModal);
+
+document.getElementById('broadcastPreviewBtn')?.addEventListener('click', previewBroadcast);
+document.getElementById('broadcastForm')?.addEventListener('submit', submitBroadcast);
+
+// Click-on-overlay-to-close for the Tier 4 modals
+document.getElementById('userActionModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'userActionModal') closeUserActionModal();
+});
+document.getElementById('createUserModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'createUserModal') closeCreateUserModal();
+});
 

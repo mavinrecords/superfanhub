@@ -156,6 +156,8 @@ CREATE TABLE IF NOT EXISTS users (
   verification_token TEXT,
   reset_token TEXT,
   reset_token_expires TEXT,
+  is_suspended INTEGER DEFAULT 0,
+  must_change_password INTEGER DEFAULT 0,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

@@ -57,6 +57,13 @@ async function login(email, password, ipAddress = null, userAgent = null) {
         throw new Error('Invalid email or password');
     }
 
+    // Reject suspended accounts BEFORE bcrypt comparison so the timing
+    // doesn't leak whether the email exists. Suspension is reversible by
+    // an admin via /api/admin/users/:id/unsuspend.
+    if (user.is_suspended === 1) {
+        throw new Error('Account suspended. Please contact support.');
+    }
+
     const validPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!validPassword) {
@@ -80,7 +87,8 @@ async function login(email, password, ipAddress = null, userAgent = null) {
             id: user.id,
             email: user.email,
             name: user.name,
-            isVerified: user.is_verified === 1
+            isVerified: user.is_verified === 1,
+            mustChangePassword: user.must_change_password === 1
         },
         token: sessionToken,
         expiresAt: expiresAt.toISOString()

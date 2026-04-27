@@ -19,6 +19,8 @@ const artistService = require('../services/artistService');
 const referralService = require('../services/referralService');
 const streakService = require('../services/streakService');
 const dailyChallengeService = require('../services/dailyChallengeService');
+const userAdminService = require('../services/userAdminService');
+const broadcastService = require('../services/broadcastService');
 const { logAdminAction, getRecentActions, getDistinctActions } = require('../services/adminAuditService');
 const { requireAdminRole } = require('../middleware/requireAdminRole');
 
@@ -1363,6 +1365,198 @@ router.delete('/daily-challenges/:id', requireAdmin, requireAdminRole('superadmi
         res.status(500).json({ error: 'Failed to delete daily challenge' });
     }
 });
+
+// =============================================================
+// TIER 4 — USER ADMIN (sensitive)
+// =============================================================
+// All ops are gated. Suspend/Reset are admin-only. Create + Delete are
+// superadmin-only because they're irreversible (delete) or grant access
+// (create). Every action is captured in the audit log with full context.
+
+router.get('/managed-users', requireAdmin, (req, res) => {
+    try {
+        const { search, limit, offset } = req.query;
+        res.json(userAdminService.listManagedUsers({
+            search: search || '',
+            limit: limit ? parseInt(limit, 10) : 50,
+            offset: offset ? parseInt(offset, 10) : 0
+        }));
+    } catch (error) {
+        console.error('List managed users error:', error);
+        res.status(500).json({ error: 'Failed to list users' });
+    }
+});
+
+router.post('/users',
+    requireAdmin, requireAdminRole('superadmin'),
+    requireFields('email', 'password', 'name'),
+    async (req, res) => {
+        try {
+            const { email, password, name, phone } = req.body;
+            const user = await userAdminService.createUserAdmin({
+                email: String(email).trim().toLowerCase(),
+                password,
+                name: String(name).trim(),
+                phone: phone || null
+            });
+            logAdminAction(req, 'ADMIN_CREATE_USER', 'user', user.id, {
+                email: user.email,
+                name: user.name,
+                auto_verified: true
+            });
+            // Don't return password_hash — `getUserSummary` already excludes it.
+            res.status(201).json(user);
+        } catch (error) {
+            console.error('Admin create user error:', error);
+            const msg = String(error?.message || '');
+            if (msg.includes('Email already registered')) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+            res.status(500).json({ error: msg || 'Failed to create user' });
+        }
+    }
+);
+
+router.post('/users/:id/reset-password', requireAdmin, async (req, res) => {
+    try {
+        const userId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' });
+        const result = await userAdminService.resetUserPassword(userId);
+        logAdminAction(req, 'ADMIN_RESET_PASSWORD', 'user', userId, {
+            email: result.email,
+            sessions_revoked: result.sessionsRevoked,
+            // NEVER log the actual temp password — admin sees it in the
+            // response body once and only once.
+            forced_change: true
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Admin reset password error:', error);
+        const msg = String(error?.message || '');
+        if (msg === 'User not found') return res.status(404).json({ error: msg });
+        res.status(500).json({ error: msg || 'Failed to reset password' });
+    }
+});
+
+router.post('/users/:id/suspend', requireAdmin, (req, res) => {
+    try {
+        const userId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' });
+        const reason = req.body?.reason || null;
+        const result = userAdminService.suspendUser(userId, reason);
+        logAdminAction(req, 'ADMIN_SUSPEND_USER', 'user', userId, {
+            email: result.email,
+            reason,
+            sessions_revoked: result.sessionsRevoked,
+            already_suspended: result.alreadySuspended || false
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Admin suspend user error:', error);
+        const msg = String(error?.message || '');
+        if (msg === 'User not found') return res.status(404).json({ error: msg });
+        res.status(500).json({ error: msg || 'Failed to suspend user' });
+    }
+});
+
+router.post('/users/:id/unsuspend', requireAdmin, (req, res) => {
+    try {
+        const userId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' });
+        const result = userAdminService.unsuspendUser(userId);
+        logAdminAction(req, 'ADMIN_UNSUSPEND_USER', 'user', userId, {
+            email: result.email,
+            already_active: result.alreadyActive || false
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Admin unsuspend user error:', error);
+        const msg = String(error?.message || '');
+        if (msg === 'User not found') return res.status(404).json({ error: msg });
+        res.status(500).json({ error: msg || 'Failed to unsuspend user' });
+    }
+});
+
+router.delete('/users/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const userId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' });
+
+        // Defensive: require an explicit confirm string in the request body
+        // matching the user's email. Frontend should pass `confirmEmail` so
+        // a typo'd URL or replayed XHR can't nuke the wrong account.
+        const { confirmEmail } = req.body || {};
+        if (!confirmEmail) {
+            return res.status(400).json({ error: 'confirmEmail is required to confirm deletion' });
+        }
+        const target = userAdminService.getUserSummary(userId);
+        if (!target) return res.status(404).json({ error: 'User not found' });
+        if (String(confirmEmail).trim().toLowerCase() !== target.email.toLowerCase()) {
+            return res.status(400).json({ error: 'confirmEmail does not match target user email' });
+        }
+
+        const result = userAdminService.deleteUser(userId);
+        logAdminAction(req, 'ADMIN_DELETE_USER', 'user', userId, {
+            deleted_row: result.snapshot,
+            cascaded: 'all user-keyed tables (FK CASCADE)'
+        });
+        res.json({ ok: true, deleted: result.snapshot });
+    } catch (error) {
+        console.error('Admin delete user error:', error);
+        const msg = String(error?.message || '');
+        if (msg === 'User not found') return res.status(404).json({ error: msg });
+        res.status(500).json({ error: msg || 'Failed to delete user' });
+    }
+});
+
+// =============================================================
+// TIER 4 — EMAIL BROADCAST (superadmin)
+// =============================================================
+
+router.post('/broadcast/preview', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const { audience } = req.body || {};
+        const preview = broadcastService.previewBroadcast({ audience: audience || 'all' });
+        res.json(preview);
+    } catch (error) {
+        console.error('Broadcast preview error:', error);
+        res.status(400).json({ error: error.message || 'Failed to preview broadcast' });
+    }
+});
+
+router.post('/broadcast',
+    requireAdmin, requireAdminRole('superadmin'),
+    requireFields('subject', 'body'),
+    async (req, res) => {
+        try {
+            const { subject, body, audience } = req.body || {};
+            const result = await broadcastService.broadcastEmail({
+                subject: String(subject).trim(),
+                body: String(body),
+                audience: audience || 'all'
+            });
+            logAdminAction(req, 'ADMIN_BROADCAST', 'broadcast', null, {
+                audience: result.audience,
+                subject: subject,
+                recipients: result.recipients,
+                sent: result.sent,
+                failed: result.failed
+            });
+            // Strip per-recipient `results` from the response — payload
+            // is already large for big audiences and the totals are what
+            // the admin needs to see.
+            res.json({
+                audience: result.audience,
+                recipients: result.recipients,
+                sent: result.sent,
+                failed: result.failed
+            });
+        } catch (error) {
+            console.error('Broadcast send error:', error);
+            res.status(400).json({ error: error.message || 'Failed to send broadcast' });
+        }
+    }
+);
 
 // =============================================================
 // ADMIN AUDIT LOG (T0-6)

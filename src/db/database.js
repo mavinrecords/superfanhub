@@ -57,11 +57,39 @@ function getDatabase() {
     return db;
 }
 
+/**
+ * Idempotent ALTER-TABLE pass that runs after schema.sql on every boot.
+ * SQLite's CREATE TABLE IF NOT EXISTS does NOT add new columns to existing
+ * tables, so any schema column additions for already-deployed DBs need to
+ * happen here. Each block is guarded by a PRAGMA table_info check.
+ */
+function runPostSchemaMigrations(database) {
+    function hasColumn(table, column) {
+        try {
+            const cols = database.pragma(`table_info(${table})`).map(c => c.name);
+            return cols.includes(column);
+        } catch (_) {
+            return false;
+        }
+    }
+
+    // Tier 4 — user account ops support (suspend + forced password change)
+    if (!hasColumn('users', 'is_suspended')) {
+        database.exec(`ALTER TABLE users ADD COLUMN is_suspended INTEGER DEFAULT 0`);
+        console.log('  ✓ Added users.is_suspended');
+    }
+    if (!hasColumn('users', 'must_change_password')) {
+        database.exec(`ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0`);
+        console.log('  ✓ Added users.must_change_password');
+    }
+}
+
 function initializeDatabase() {
     const database = getDatabase();
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf-8');
     database.exec(schema);
+    runPostSchemaMigrations(database);
     console.log('Database initialized successfully');
     return database;
 }

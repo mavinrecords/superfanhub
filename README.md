@@ -1,126 +1,183 @@
-# 🎁 Digital Gift Card & Ticket Discount System
+# Mavin SuperFan Hub
 
-A production-ready, closed-ecosystem gift card infrastructure supporting stored-value cards, percentage-based discounts, and hybrid cards.
+A superfan engagement platform for music artists — tasks, squads, leaderboards, rewards, and gift cards, with Spotify/Last.fm streaming integrations and a full admin dashboard.
 
-## Features
+Pure-black + Mavin gold (`#A2812E`) brand. Mobile-first, WCAG AA compliant, vanilla stack (Node.js + Express + SQLite + vanilla JS).
 
-- **Card Types**: Value, Discount, and Hybrid cards
-- **Secure Codes**: Cryptographically random, bcrypt-hashed codes
-- **Atomic Transactions**: SQLite with WAL mode ensures no double-spending
-- **Rate Limiting**: Protection against brute-force attacks
-- **Full Audit Trail**: Every operation logged with timestamps
-- **Admin Dashboard**: Issue, freeze, revoke cards and view audit logs
-- **Fan Redemption**: Simple interface for customers to redeem cards
+---
 
-## Quick Start
+## What's in here
+
+| Surface | Purpose |
+|---|---|
+| `/` (`index.html`) | Marketing landing page |
+| `/login`, `/register` | Fan auth |
+| `/dashboard` | Per-fan home: streaming stats, points, badges, streak, connect Spotify/Last.fm |
+| `/tasks` | Browse and complete artist tasks (proof submission, points reward) |
+| `/squads` | Create / join superfan squads, contribute, see standings |
+| `/rewards` | Spend points on rewards from the catalog |
+| `/leaderboard` | Top fans by points / streaming minutes |
+| `/campaigns` | Active artist campaigns |
+| `/gift-cards` | Fan-side gift-card management |
+| `/redeem` | Public gift-card / promo-code redemption |
+| `/admin` | Full admin dashboard — cards, users, audit log, analytics, moderation |
+
+13 HTML pages, 12 API route modules, 30 service modules, ~60 backend files.
+
+---
+
+## Quick start
 
 ```bash
-# Install dependencies
+# 1. Install
 npm install
 
-# Initialize database (creates default admin user)
+# 2. Copy env and fill in secrets
+cp .env.example .env       # then edit .env (see "Environment" below)
+
+# 3. Initialize the SQLite database (creates tables + default admin)
 npm run init-db
 
-# Start the server
-npm run dev
+# 4. Start
+npm run dev                # auto-reload via node --watch
+# or
+npm start                  # production mode
 ```
 
-**Default Admin Credentials:**
-- Username: `admin`
-- Password: `admin123`
-- ⚠️ **Change this immediately in production!**
+Default admin: **`admin` / `admin123`** — change this on first login. The `/api/admin` middleware blocks every request until the default password is rotated.
 
-## Access Points
+Server listens on `http://localhost:3000` (override with `PORT`).
 
-- **Customer Redemption**: http://localhost:3000
-- **Admin Dashboard**: http://localhost:3000/admin
+---
 
-## API Endpoints
+## API surface
 
-### Public Endpoints
+All API routes are mounted under `/api`. Browser routes serve the matching HTML page from `public/`.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/cards/validate` | POST | Validate a card code |
-| `/api/cards/redeem` | POST | Redeem value from a card |
-| `/api/cards/apply-discount` | POST | Apply discount to a ticket |
-| `/api/cards/check-balance` | POST | Check card balance |
+| Mount | Module | Notes |
+|---|---|---|
+| `/api/cards` | `src/routes/cards.js` | Public: validate, redeem, balance |
+| `/api/admin` | `src/routes/admin.js` | Admin-only: cards, users, audit, analytics |
+| `/api/user` | `src/routes/userAuth.js` | Fan auth: register, login, logout, me |
+| `/api/loyalty` | `src/routes/loyalty.js` | Points, tiers, streaks |
+| `/api/tasks` | `src/routes/tasks.js` | Task list, submit, verify |
+| `/api/rewards` | `src/routes/rewards.js` | Catalog, redeem reward |
+| `/api/squads` | `src/routes/squads.js` | Squad CRUD, join, contribute |
+| `/api/leaderboard` | `src/routes/leaderboard.js` | Rankings |
+| `/api/campaigns` | `src/routes/campaigns.js` | Active artist campaigns |
+| `/api/spotify` | `src/routes/spotify.js` | OAuth + listen-history sync |
+| `/api/lastfm` | `src/routes/lastfm.js` | Username connect + scrobble pull |
+| `/api/artists` | `src/routes/artists.js` | Artist roster lookup |
+| `/api/health` | inline | Liveness probe |
 
-### Admin Endpoints (Authenticated)
+Every admin write goes through `adminAuditService.js` and lands in the audit log surfaced at `/admin → Audit`.
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/admin/login` | POST | Admin login |
-| `/api/admin/logout` | POST | Admin logout |
-| `/api/admin/stats` | GET | Dashboard statistics |
-| `/api/admin/cards` | GET | List all cards |
-| `/api/admin/cards` | POST | Issue new card |
-| `/api/admin/cards/bulk` | POST | Bulk issue cards |
-| `/api/admin/cards/:id/freeze` | POST | Freeze a card |
-| `/api/admin/cards/:id/unfreeze` | POST | Unfreeze a card |
-| `/api/admin/cards/:id/revoke` | POST | Revoke a card |
-| `/api/admin/transactions` | GET | View audit log |
-| `/api/admin/cards/export/csv` | GET | Export cards as CSV |
+---
 
-## Security Features
-
-1. **Code Hashing**: Gift card codes are bcrypt-hashed before storage
-2. **Rate Limiting**: 5 validation attempts per minute per IP
-3. **Suspicious Activity Detection**: 15-minute lockout after 10 failed attempts
-4. **Atomic Operations**: All balance changes wrapped in transactions
-5. **Session-Based Auth**: Secure admin authentication with HTTP-only cookies
-6. **Helmet.js**: Security headers for XSS, clickjacking protection
-
-## Project Structure
+## Project structure
 
 ```
+.
+├── public/                     # Static assets served at /
+│   ├── *.html                  # 13 pages
+│   ├── css/
+│   │   ├── styles.css          # Brand tokens + base components
+│   │   ├── home.css            # Marketing landing
+│   │   └── mobile.css          # Mobile UX & a11y primitives (drawer, tap-44, focus-visible, ...)
+│   ├── js/
+│   │   ├── admin.js            # Admin dashboard logic
+│   │   ├── redemption.js       # Redeem-page logic
+│   │   ├── nav.js              # Off-canvas drawer
+│   │   └── toast.js            # Toast stacking + dismissal
+│   └── images/
 ├── src/
-│   ├── server.js           # Express app entry point
+│   ├── server.js               # Express entry point
 │   ├── db/
-│   │   ├── schema.sql      # Database schema
-│   │   ├── database.js     # SQLite connection
-│   │   └── init.js         # DB initialization script
-│   ├── routes/
-│   │   ├── cards.js        # Public API routes
-│   │   └── admin.js        # Admin API routes
-│   ├── services/
-│   │   └── cardService.js  # Core business logic
+│   │   ├── schema.sql          # Full DB schema
+│   │   ├── database.js         # better-sqlite3 connection (WAL mode)
+│   │   ├── init.js             # First-run init (creates default admin)
+│   │   └── migrate.js          # Schema migrations
+│   ├── routes/                 # Route handlers (12 modules)
+│   ├── services/               # Business logic (30 modules)
 │   └── middleware/
-│       ├── security.js     # Rate limiting, validation
-│       └── auth.js         # Admin authentication
-├── public/
-│   ├── index.html          # Customer redemption UI
-│   ├── admin.html          # Admin dashboard
-│   ├── css/styles.css      # Shared styles
-│   └── js/
-│       ├── redemption.js   # Customer UI logic
-│       └── admin.js        # Admin UI logic
+│       ├── security.js         # Rate limiting, helmet, request IDs
+│       ├── auth.js             # Admin session auth
+│       ├── requireUser.js      # Fan JWT auth
+│       └── requireAdminRole.js # Admin role gate
+├── scripts/
+│   └── lookup-spotify-artist-ids.js   # Backfill helper
 ├── package.json
 └── README.md
 ```
 
-## Card Tiers
+---
 
-- **Standard**: Basic tier
-- **Premium**: Mid-tier with enhanced visibility
-- **VIP**: Top-tier cards
+## Environment
 
-## Environment Variables
+Required `.env` keys:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | 3000 | Server port |
-| `SESSION_SECRET` | (dev secret) | Session encryption key |
-| `NODE_ENV` | development | Environment mode |
+| Var | Required | Default | Notes |
+|---|---|---|---|
+| `PORT` | no | `3000` | Server port |
+| `SESSION_SECRET` | **yes (prod)** | dev fallback | Session cookie signing key |
+| `NODE_ENV` | no | `development` | `production` enables secure cookies |
+| `BASE_URL` | no | `http://localhost:3000` | Used in OAuth callback construction and email links |
+| `SPOTIFY_CLIENT_ID` | no | — | Required for Spotify OAuth |
+| `SPOTIFY_CLIENT_SECRET` | no | — | Required for Spotify OAuth |
+| `SPOTIFY_REDIRECT_URI` | no | — | OAuth callback URL |
+| `LASTFM_API_KEY` | no | — | Required for Last.fm scrobble pulls |
+| `MAVIN_ARTIST_IDS` | no | — | Comma-separated Spotify artist IDs to pre-populate the roster |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` | no | — | Transactional email |
+| `RUN_EXPIRY_CHECK_ON_START` | no | `false` | Run reward-expiry sweep immediately at boot (scheduler cron also runs daily) |
 
-## Production Deployment
+Fan authentication uses opaque session tokens (no JWT), so there is no `JWT_SECRET`. Sessions are stored server-side and validated via `authService.validateSession`.
 
-1. Set secure `SESSION_SECRET` environment variable
-2. Change default admin password
-3. Set `NODE_ENV=production` for secure cookies
-4. Consider migrating to PostgreSQL for scale >10K cards
-5. Add HTTPS termination (nginx/Cloudflare)
+Anything left unset disables the corresponding feature gracefully — server still boots.
+
+---
+
+## Database
+
+SQLite via `better-sqlite3` in WAL mode. Single file at `src/db/giftcards.db`. Schema lives in `src/db/schema.sql`; migrations in `src/db/migrate.js`. All money/points mutations are wrapped in transactions.
+
+For deployment with persistent storage (Render, Fly), mount a volume at `src/db/` so the file survives redeploys. For multi-instance deployments, migrate to PostgreSQL — same SQL is mostly portable.
+
+---
+
+## Security
+
+- Bcrypt-hashed passwords and gift-card codes
+- Helmet headers (CSP, X-Frame-Options, HSTS-ready)
+- Rate limiting via `express-rate-limit` (5/min per IP on `/api`, stricter on auth)
+- Brute-force lockout on validation endpoints
+- Admin session via HTTP-only cookies; fan auth via JWT
+- Audit log on every admin write
+- WCAG 2.1 AA contrast (see `mobile.css` header for measured ratios)
+- `prefers-reduced-motion` honored across all animations
+- No third-party tracking
+
+---
+
+## Scripts
+
+```bash
+npm start          # Production (node src/server.js)
+npm run dev        # Watch mode (node --watch)
+npm run init-db    # First-run DB init
+npm run migrate    # Apply pending migrations
+npm test           # Test runner (node --test src/**/*.test.js)
+```
+
+---
+
+## Deployment notes
+
+This is a **stateful, long-lived Node process**. It is not compatible with serverless platforms (Vercel, Cloudflare Workers) without significant rewrites — `node-cron` jobs need a long-lived process, SQLite needs persistent disk, and `express-session` defaults to in-memory.
+
+Recommended: **Render** (Web Service + 1 GB persistent disk on `src/db/`), **Fly.io** (with a volume), or any VPS. Free-tier cold starts will pause `node-cron` schedulers.
+
+---
 
 ## License
 
-MIT
+UNLICENSED — internal Mavin Records project.

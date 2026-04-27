@@ -6,10 +6,12 @@ node_modules/
 .env.local
 .env.*.local
 
-# Database files
+# Database files (SQLite + WAL/SHM + backups + pre-migration snapshots)
 *.db
 *.db-shm
 *.db-wal
+*.db.backup-*
+*.pre-*.db
 
 # Logs
 *.log
@@ -19,10 +21,18 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Editor
+# Editor + tooling caches
 .vscode/
 .idea/
+.claude/
+.kombai/
 
 # Build outputs
 dist/
 build/
+
+# Temp / scratch
+tmp/
+*.tmp
+*.bak
+*.backup

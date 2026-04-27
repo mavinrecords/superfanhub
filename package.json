@@ -1,7 +1,7 @@
 {
-  "name": "gift-card-agent",
+  "name": "mavin-superfan-hub",
   "version": "1.0.0",
-  "description": "Digital Gift Card & Ticket Discount Infrastructure",
+  "description": "Mavin SuperFan Hub — superfan engagement platform with tasks, squads, leaderboards, rewards, gift cards, and Spotify/Last.fm integrations.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",

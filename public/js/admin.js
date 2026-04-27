@@ -267,6 +267,7 @@ function showPage(page) {
     if (page === 'verifications') loadVerifications();
     if (page === 'rewards') loadRewardsPage();
     if (page === 'squads') loadSquads();
+    if (page === 'artists') loadArtists();
 }
 
 // =============================================================
@@ -1570,6 +1571,10 @@ function switchTasksTab(name) {
     document.getElementById('tasksTabList')?.classList.toggle('hidden', name !== 'list');
     document.getElementById('tasksTabMultipliers')?.classList.toggle('hidden', name !== 'multipliers');
     document.getElementById('tasksTabFraud')?.classList.toggle('hidden', name !== 'fraud');
+    document.getElementById('tasksTabChallenges')?.classList.toggle('hidden', name !== 'challenges');
+    if (name === 'challenges' && typeof loadDailyChallenges === 'function') {
+        loadDailyChallenges();
+    }
 }
 
 async function loadTaskStats() {
@@ -2701,4 +2706,471 @@ document.getElementById('applyRedemptionFiltersBtn')?.addEventListener('click', 
 document.querySelectorAll('[data-rewards-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchRewardsTab(btn.dataset.rewardsTab));
 });
+
+// =====================================================================
+// TIER 3 — ARTISTS / REFERRALS / STREAKS / DAILY CHALLENGES
+// =====================================================================
+
+// ─── ARTISTS ──────────────────────────────────────────────────────────
+async function loadArtists() {
+    const tbody = document.getElementById('artistsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 6);
+    try {
+        const res = await fetch('/api/admin/artists', { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Failed to load artists</td></tr>';
+            return;
+        }
+        const artists = await res.json();
+        if (!artists || artists.length === 0) {
+            tbody.innerHTML = `
+                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:0.4;margin-bottom:8px;">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M12 1v6M12 17v6M1 12h6M17 12h6"/>
+                    </svg>
+                    <div>No artists yet. Click "+ New Artist" to add one.</div>
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = artists.map(a => `
+            <tr>
+                <td><strong>${escapeHtml(a.display_name || '')}</strong></td>
+                <td><code style="font-size:0.85em;">${escapeHtml(a.slug || '')}</code></td>
+                <td>${a.spotify_artist_id ? `<code style="font-size:0.8em;">${escapeHtml(a.spotify_artist_id)}</code>` : '<span class="text-muted">—</span>'}</td>
+                <td>${a.sort_order ?? 100}</td>
+                <td>${a.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick='editArtist(${JSON.stringify(a)})'>Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteArtist('${escapeHtml(a.slug || '').replace(/'/g, "\\'")}', '${escapeHtml(a.display_name || '').replace(/'/g, "\\'")}')">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load artists error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function showCreateArtistModal() {
+    const form = document.getElementById('artistForm');
+    if (!form) return;
+    form.reset();
+    document.getElementById('artistOriginalSlug').value = '';
+    document.getElementById('artistModalTitle').textContent = 'Create Artist';
+    document.getElementById('artistSubmitBtn').textContent = 'Create Artist';
+    document.getElementById('artistSlug').disabled = false;
+    document.getElementById('artistSortOrder').value = 100;
+    document.getElementById('artistActive').value = '1';
+    document.getElementById('artistModal').classList.add('active');
+}
+
+function editArtist(artist) {
+    document.getElementById('artistOriginalSlug').value = artist.slug || '';
+    document.getElementById('artistDisplayName').value = artist.display_name || '';
+    document.getElementById('artistSlug').value = artist.slug || '';
+    document.getElementById('artistSlug').disabled = true; // slug is the PK we route by
+    document.getElementById('artistSpotifyId').value = artist.spotify_artist_id || '';
+    document.getElementById('artistSortOrder').value = artist.sort_order ?? 100;
+    document.getElementById('artistActive').value = artist.active ? '1' : '0';
+    document.getElementById('artistModalTitle').textContent = `Edit Artist: ${artist.display_name || artist.slug}`;
+    document.getElementById('artistSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('artistModal').classList.add('active');
+}
+
+function closeArtistModal() {
+    document.getElementById('artistModal')?.classList.remove('active');
+}
+
+async function submitArtistForm(e) {
+    e.preventDefault();
+    const originalSlug = document.getElementById('artistOriginalSlug').value;
+    const isEdit = Boolean(originalSlug);
+    const payload = {
+        display_name: document.getElementById('artistDisplayName').value.trim(),
+        spotify_artist_id: document.getElementById('artistSpotifyId').value.trim() || null,
+        sort_order: parseInt(document.getElementById('artistSortOrder').value, 10) || 100,
+        active: document.getElementById('artistActive').value === '1' ? 1 : 0
+    };
+    if (!isEdit) {
+        const slug = document.getElementById('artistSlug').value.trim();
+        if (slug) payload.slug = slug;
+    }
+    const url = isEdit ? `/api/admin/artists/${encodeURIComponent(originalSlug)}` : '/api/admin/artists';
+    const method = isEdit ? 'PUT' : 'POST';
+    const btn = document.getElementById('artistSubmitBtn');
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = isEdit ? 'Saving...' : 'Creating...';
+    try {
+        const res = await fetch(url, {
+            method,
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || (isEdit ? 'Failed to save artist' : 'Failed to create artist'));
+            return;
+        }
+        closeArtistModal();
+        showSuccessModal(isEdit ? 'Artist Updated' : 'Artist Created', payload.display_name);
+        loadArtists();
+    } catch (err) {
+        console.error('Submit artist error:', err);
+        alert('Network error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+    }
+}
+
+async function deleteArtist(slug, displayName) {
+    if (!confirm(`Permanently delete artist "${displayName}"?\n\nThis will cascade-delete:\n  • all tasks for this artist\n  • all squads for this artist\n  • all rewards for this artist\n  • all campaign multipliers for this artist\n\nStreaming history and earned points are preserved.\nThis cannot be undone.`)) return;
+    try {
+        const res = await fetch(`/api/admin/artists/${encodeURIComponent(slug)}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || 'Failed to delete artist');
+            return;
+        }
+        const result = await res.json();
+        const counts = result?.counts || {};
+        const summary = `Deleted ${displayName}\n\nCascade:\n  • ${counts.tasks || 0} tasks\n  • ${counts.squads || 0} squads\n  • ${counts.rewards || 0} rewards\n  • ${counts.campaign_multipliers || 0} multipliers`;
+        showSuccessModal('Artist Deleted', summary, 3000);
+        loadArtists();
+    } catch (err) {
+        console.error('Delete artist error:', err);
+        alert('Network error');
+    }
+}
+
+// ─── REFERRALS ────────────────────────────────────────────────────────
+function switchLoyaltyTab(name) {
+    document.querySelectorAll('[data-loyalty-tab]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.loyaltyTab === name);
+    });
+    document.getElementById('loyaltyTabConfig')?.classList.toggle('hidden', name !== 'config');
+    document.getElementById('loyaltyTabReferrals')?.classList.toggle('hidden', name !== 'referrals');
+    if (name === 'referrals') loadReferrals();
+}
+
+async function loadReferrals() {
+    const tbody = document.getElementById('referralsTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 7);
+    try {
+        const status = document.getElementById('referralStatusFilter')?.value || '';
+        const params = new URLSearchParams();
+        if (status) params.set('status', status);
+        const res = await fetch(`/api/admin/referrals?${params.toString()}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Failed to load referrals</td></tr>';
+            return;
+        }
+        const rows = await res.json();
+        if (!rows.length) {
+            tbody.innerHTML = `
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:32px;">
+                    No referrals${status ? ` with status "${escapeHtml(status)}"` : ''} yet.
+                </td></tr>`;
+            return;
+        }
+        tbody.innerHTML = rows.map(r => `
+            <tr>
+                <td>${formatDate(r.created_at)}</td>
+                <td>
+                    <div>${escapeHtml(r.referrer_name || '—')}</div>
+                    <div class="text-muted" style="font-size:0.8em;">${escapeHtml(r.referrer_email || '')}</div>
+                </td>
+                <td>
+                    <div>${escapeHtml(r.referee_name || '—')}</div>
+                    <div class="text-muted" style="font-size:0.8em;">${escapeHtml(r.referee_email || '')}</div>
+                </td>
+                <td><code>${escapeHtml(r.code || '')}</code></td>
+                <td><span class="badge badge-${r.status === 'completed' ? 'success' : 'warning'}">${escapeHtml(r.status || '')}</span></td>
+                <td>${r.reward_status === 'granted'
+                    ? '<span class="badge badge-success">Granted</span>'
+                    : '<span class="badge badge-secondary">Unclaimed</span>'}</td>
+                <td>
+                    ${r.status !== 'completed' || r.reward_status !== 'granted'
+                        ? `<button class="btn btn-sm btn-primary" onclick="approveReferral(${r.id})">Approve</button>`
+                        : '<span class="text-muted" style="font-size:0.8em;">Done</span>'}
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load referrals error:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+async function approveReferral(id) {
+    if (!confirm('Approve this referral and grant 500 reward points to the referrer?')) return;
+    try {
+        const res = await fetch(`/api/admin/referrals/${id}/approve`, {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || 'Failed to approve referral');
+            return;
+        }
+        showSuccessModal('Referral Approved', 'Reward granted to referrer');
+        loadReferrals();
+    } catch (err) {
+        console.error('Approve referral error:', err);
+        alert('Network error');
+    }
+}
+
+// ─── STREAKS ──────────────────────────────────────────────────────────
+async function loadStreaks() {
+    const tbody = document.getElementById('streaksTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 7);
+    try {
+        const sortBy = document.getElementById('streakSortBy')?.value || 'current';
+        const params = new URLSearchParams({ sortBy });
+        const res = await fetch(`/api/admin/streaks?${params.toString()}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Failed to load streaks</td></tr>';
+            return;
+        }
+        const rows = await res.json();
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px;">No active streaks yet.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(s => {
+            const fireEmoji = s.current_streak >= 30 ? '💎' : s.current_streak >= 14 ? '🚀' : s.current_streak >= 7 ? '🔥' : s.current_streak >= 3 ? '✨' : '';
+            return `
+                <tr>
+                    <td><strong>${escapeHtml(s.user_name || '—')}</strong></td>
+                    <td class="text-muted">${escapeHtml(s.user_email || '')}</td>
+                    <td><span style="font-weight:600;">${fireEmoji} ${s.current_streak}</span></td>
+                    <td>${s.longest_streak}</td>
+                    <td>${Number(s.bonus_multiplier || 1).toFixed(2)}x</td>
+                    <td class="text-muted" style="font-size:0.85em;">${s.last_activity_date || '—'}</td>
+                    <td>
+                        ${s.current_streak > 0
+                            ? `<button class="btn btn-sm btn-danger" onclick="adminResetStreak(${s.user_id}, '${escapeHtml(s.user_name || '').replace(/'/g, "\\'")}')">Reset</button>`
+                            : '<span class="text-muted" style="font-size:0.8em;">—</span>'}
+                    </td>
+                </tr>`;
+        }).join('');
+    } catch (e) {
+        console.error('Load streaks error:', e);
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+async function adminResetStreak(userId, userName) {
+    if (!confirm(`Reset streak for ${userName}?\n\nCurrent streak will be set to 0 and multiplier to 1.0x.\nLongest streak record is preserved.`)) return;
+    try {
+        const res = await fetch(`/api/admin/streaks/${userId}/reset`, {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || 'Failed to reset streak');
+            return;
+        }
+        showSuccessModal('Streak Reset', `${userName}'s current streak cleared`);
+        loadStreaks();
+    } catch (err) {
+        console.error('Reset streak error:', err);
+        alert('Network error');
+    }
+}
+
+// ─── DAILY CHALLENGES ────────────────────────────────────────────────
+async function loadDailyChallenges() {
+    const tbody = document.getElementById('challengesTableBody');
+    if (!tbody) return;
+    paintSkeletonRows(tbody, 4, 6);
+    try {
+        const since = document.getElementById('challengeSinceFilter')?.value;
+        const until = document.getElementById('challengeUntilFilter')?.value;
+        const type = document.getElementById('challengeTypeFilter')?.value;
+        const params = new URLSearchParams();
+        if (since) params.set('since', since);
+        if (until) params.set('until', until);
+        if (type) params.set('type', type);
+        const res = await fetch(`/api/admin/daily-challenges?${params.toString()}`, { credentials: 'same-origin' });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Failed to load challenges</td></tr>';
+            return;
+        }
+        const rows = await res.json();
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">No challenges in this range.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(c => `
+            <tr>
+                <td>${escapeHtml(c.challenge_date || '')}</td>
+                <td><span class="badge badge-${c.challenge_type === 'weekly' ? 'primary' : 'secondary'}">${escapeHtml(c.challenge_type || '')}</span></td>
+                <td>
+                    <div><strong>${escapeHtml(c.task_title || `Task #${c.task_id}`)}</strong></div>
+                    <div class="text-muted" style="font-size:0.8em;">
+                        ${escapeHtml(c.task_type || '')}${c.artist_name ? ` · ${escapeHtml(c.artist_name)}` : ''}${c.task_status && c.task_status !== 'active' ? ` · <span style="color:#d97706;">${escapeHtml(c.task_status)}</span>` : ''}
+                    </div>
+                </td>
+                <td>+${c.bonus_points || 0} pts</td>
+                <td>${c.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick='editDailyChallenge(${JSON.stringify(c)})'>Edit</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDailyChallenge(${c.id})">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (e) {
+        console.error('Load daily challenges error:', e);
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Network error</td></tr>';
+    }
+}
+
+function showCreateChallengeModal() {
+    const form = document.getElementById('challengeForm');
+    if (!form) return;
+    form.reset();
+    document.getElementById('challengeId').value = '';
+    document.getElementById('challengeModalTitle').textContent = 'Create Daily Challenge';
+    document.getElementById('challengeSubmitBtn').textContent = 'Create Challenge';
+    document.getElementById('challengeBonus').value = 50;
+    document.getElementById('challengeActive').value = '1';
+    // Default to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('challengeDate').value = today;
+    document.getElementById('challengeModal').classList.add('active');
+}
+
+function editDailyChallenge(c) {
+    document.getElementById('challengeId').value = c.id;
+    document.getElementById('challengeTaskId').value = c.task_id;
+    document.getElementById('challengeDate').value = c.challenge_date || '';
+    document.getElementById('challengeTypeInput').value = c.challenge_type || 'daily';
+    document.getElementById('challengeBonus').value = c.bonus_points ?? 0;
+    document.getElementById('challengeActive').value = c.is_active ? '1' : '0';
+    document.getElementById('challengeModalTitle').textContent = `Edit Challenge #${c.id}`;
+    document.getElementById('challengeSubmitBtn').textContent = 'Save Changes';
+    document.getElementById('challengeModal').classList.add('active');
+}
+
+function closeChallengeModal() {
+    document.getElementById('challengeModal')?.classList.remove('active');
+}
+
+async function submitChallengeForm(e) {
+    e.preventDefault();
+    const id = document.getElementById('challengeId').value;
+    const isEdit = Boolean(id);
+    const taskId = parseInt(document.getElementById('challengeTaskId').value, 10);
+    const challengeDate = document.getElementById('challengeDate').value;
+    const challengeType = document.getElementById('challengeTypeInput').value;
+    const bonusPoints = parseInt(document.getElementById('challengeBonus').value, 10) || 0;
+    const isActive = document.getElementById('challengeActive').value === '1' ? 1 : 0;
+
+    const url = isEdit ? `/api/admin/daily-challenges/${id}` : '/api/admin/daily-challenges';
+    const method = isEdit ? 'PUT' : 'POST';
+    // PUT uses snake_case (allowlist matches columns); POST uses camelCase (route field validator).
+    const payload = isEdit
+        ? { task_id: taskId, challenge_date: challengeDate, challenge_type: challengeType, bonus_points: bonusPoints, is_active: isActive }
+        : { taskId, challengeDate, challengeType, bonusPoints, isActive };
+
+    const btn = document.getElementById('challengeSubmitBtn');
+    const orig = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = isEdit ? 'Saving...' : 'Creating...';
+    try {
+        const res = await fetch(url, {
+            method,
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || (isEdit ? 'Failed to save challenge' : 'Failed to create challenge'));
+            return;
+        }
+        closeChallengeModal();
+        showSuccessModal(isEdit ? 'Challenge Updated' : 'Challenge Created', `${challengeType} challenge for ${challengeDate}`);
+        loadDailyChallenges();
+    } catch (err) {
+        console.error('Submit challenge error:', err);
+        alert('Network error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = orig;
+    }
+}
+
+async function deleteDailyChallenge(id) {
+    if (!confirm('Delete this daily challenge?\n\nIf the scheduler regenerates today\'s challenges, this row may be re-added automatically.')) return;
+    try {
+        const res = await fetch(`/api/admin/daily-challenges/${id}`, {
+            method: 'DELETE',
+            credentials: 'same-origin'
+        });
+        if (handleAuthExpired(res)) return;
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            alert(err.error || 'Failed to delete challenge');
+            return;
+        }
+        showSuccessModal('Challenge Deleted', '');
+        loadDailyChallenges();
+    } catch (err) {
+        console.error('Delete challenge error:', err);
+        alert('Network error');
+    }
+}
+
+// ─── EVENT WIRING (Tier 3) ───────────────────────────────────────────
+document.getElementById('newArtistBtn')?.addEventListener('click', showCreateArtistModal);
+document.getElementById('closeArtistModalBtn')?.addEventListener('click', closeArtistModal);
+document.getElementById('artistForm')?.addEventListener('submit', submitArtistForm);
+
+document.getElementById('applyReferralFiltersBtn')?.addEventListener('click', loadReferrals);
+
+document.getElementById('applyStreakFiltersBtn')?.addEventListener('click', loadStreaks);
+
+document.getElementById('newChallengeBtn')?.addEventListener('click', showCreateChallengeModal);
+document.getElementById('closeChallengeModalBtn')?.addEventListener('click', closeChallengeModal);
+document.getElementById('challengeForm')?.addEventListener('submit', submitChallengeForm);
+document.getElementById('applyChallengeFiltersBtn')?.addEventListener('click', loadDailyChallenges);
+
+// Loyalty tab switcher (Config / Referrals)
+document.querySelectorAll('[data-loyalty-tab]').forEach(btn => {
+    btn.addEventListener('click', () => switchLoyaltyTab(btn.dataset.loyaltyTab));
+});
+
+// Wire Streaks load whenever SuperFans page is opened (it already loads
+// users + leaderboard via showPage('superfans')→loadSuperFans). Hook by
+// reusing the showPage dispatcher: add a second-pass loader.
+const _origShowPageT3 = showPage;
+showPage = function patchedShowPageT3(page) {
+    _origShowPageT3(page);
+    if (page === 'superfans' && typeof loadStreaks === 'function') {
+        loadStreaks();
+    }
+};
 

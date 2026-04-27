@@ -15,6 +15,10 @@ const taskFraudService = require('../services/taskFraudService');
 const contributionService = require('../services/contributionService');
 const proofService = require('../services/proofService');
 const campaignService = require('../services/campaignService');
+const artistService = require('../services/artistService');
+const referralService = require('../services/referralService');
+const streakService = require('../services/streakService');
+const dailyChallengeService = require('../services/dailyChallengeService');
 const { logAdminAction, getRecentActions, getDistinctActions } = require('../services/adminAuditService');
 const { requireAdminRole } = require('../middleware/requireAdminRole');
 
@@ -1130,6 +1134,233 @@ router.post('/rewards/redemptions/:id/fulfill', requireAdmin, (req, res) => {
     } catch (error) {
         console.error('Fulfill redemption error:', error);
         res.status(500).json({ error: 'Failed to fulfill redemption' });
+    }
+});
+
+// =============================================================
+// TIER 3 — ARTISTS (admin CRUD)
+// =============================================================
+// Artists are keyed by `slug` (e.g. "rema", "ayra-starr"); see artistService
+// for cascade behavior on delete (tasks, squads, rewards, campaign_multipliers
+// are removed; streaming_history + loyalty_transactions are preserved).
+
+router.get('/artists', requireAdmin, (req, res) => {
+    try {
+        res.json(artistService.listAllArtists());
+    } catch (error) {
+        console.error('List artists error:', error);
+        res.status(500).json({ error: 'Failed to list artists' });
+    }
+});
+
+router.post('/artists', requireAdmin, requireFields('display_name'), (req, res) => {
+    try {
+        const { display_name, slug, spotify_artist_id, sort_order, active } = req.body;
+        const artist = artistService.addArtist({
+            display_name,
+            slug: slug || null,
+            spotify_artist_id: spotify_artist_id || null,
+            sort_order: sort_order != null ? Number(sort_order) : 100,
+            active: active == null ? 1 : (active ? 1 : 0)
+        });
+        logAdminAction(req, 'CREATE_ARTIST', 'artist', artist?.id, {
+            slug: artist?.slug, display_name: artist?.display_name
+        });
+        res.status(201).json(artist);
+    } catch (error) {
+        console.error('Create artist error:', error);
+        const msg = String(error?.message || '');
+        if (msg.includes('UNIQUE') || msg.toLowerCase().includes('slug')) {
+            return res.status(400).json({ error: 'An artist with that slug already exists' });
+        }
+        res.status(400).json({ error: msg || 'Failed to create artist' });
+    }
+});
+
+router.put('/artists/:slug', requireAdmin, (req, res) => {
+    try {
+        const { display_name, spotify_artist_id, active, sort_order } = req.body;
+        const updated = artistService.updateArtist(req.params.slug, {
+            ...(display_name !== undefined ? { display_name } : {}),
+            ...(spotify_artist_id !== undefined ? { spotify_artist_id } : {}),
+            ...(active !== undefined ? { active } : {}),
+            ...(sort_order !== undefined ? { sort_order } : {})
+        });
+        if (!updated) return res.status(404).json({ error: 'Artist not found' });
+        logAdminAction(req, 'UPDATE_ARTIST', 'artist', updated.id, {
+            slug: updated.slug, changed: Object.keys(req.body || {})
+        });
+        res.json(updated);
+    } catch (error) {
+        console.error('Update artist error:', error);
+        res.status(500).json({ error: 'Failed to update artist' });
+    }
+});
+
+router.delete('/artists/:slug', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const result = artistService.deleteArtist(req.params.slug);
+        if (!result.artist) return res.status(404).json({ error: 'Artist not found' });
+        logAdminAction(req, 'DELETE_ARTIST', 'artist', result.artist.id, {
+            slug: result.slug,
+            cascade_counts: result.counts,
+            deleted_row: result.artist
+        });
+        res.json({ ok: true, ...result });
+    } catch (error) {
+        console.error('Delete artist error:', error);
+        res.status(500).json({ error: 'Failed to delete artist' });
+    }
+});
+
+// =============================================================
+// TIER 3 — REFERRALS (admin)
+// =============================================================
+
+router.get('/referrals', requireAdmin, (req, res) => {
+    try {
+        const { status, limit, offset } = req.query;
+        const rows = referralService.listReferrals({
+            status: status || null,
+            limit: limit ? parseInt(limit, 10) : 50,
+            offset: offset ? parseInt(offset, 10) : 0
+        });
+        res.json(rows);
+    } catch (error) {
+        console.error('List referrals error:', error);
+        res.status(500).json({ error: 'Failed to list referrals' });
+    }
+});
+
+router.post('/referrals/:id/approve', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const updated = referralService.approveReferral(parseInt(req.params.id, 10));
+        logAdminAction(req, 'APPROVE_REFERRAL', 'referral', updated.id, {
+            referrer_email: updated.referrer_email,
+            referee_email: updated.referee_email,
+            reward_status: updated.reward_status
+        });
+        res.json(updated);
+    } catch (error) {
+        console.error('Approve referral error:', error);
+        const msg = String(error?.message || '');
+        if (msg === 'Referral not found') return res.status(404).json({ error: msg });
+        res.status(500).json({ error: msg || 'Failed to approve referral' });
+    }
+});
+
+// =============================================================
+// TIER 3 — STREAKS (admin)
+// =============================================================
+
+router.get('/streaks', requireAdmin, (req, res) => {
+    try {
+        const { limit, offset, sortBy } = req.query;
+        const rows = streakService.listStreaks({
+            limit: limit ? parseInt(limit, 10) : 50,
+            offset: offset ? parseInt(offset, 10) : 0,
+            sortBy: sortBy === 'longest' ? 'longest' : 'current'
+        });
+        res.json(rows);
+    } catch (error) {
+        console.error('List streaks error:', error);
+        res.status(500).json({ error: 'Failed to list streaks' });
+    }
+});
+
+router.post('/streaks/:userId/reset', requireAdmin, (req, res) => {
+    try {
+        const userId = parseInt(req.params.userId, 10);
+        if (!Number.isFinite(userId)) return res.status(400).json({ error: 'Invalid user id' });
+        const result = streakService.resetUserStreak(userId);
+        logAdminAction(req, 'RESET_STREAK', 'user_streak', userId, {
+            user_id: userId,
+            previous_streak: result.previousStreak,
+            previous_multiplier: result.previousMultiplier,
+            longest_streak_preserved: result.longestStreak,
+            had_streak: result.reset
+        });
+        res.json(result);
+    } catch (error) {
+        console.error('Reset streak error:', error);
+        res.status(500).json({ error: 'Failed to reset streak' });
+    }
+});
+
+// =============================================================
+// TIER 3 — DAILY CHALLENGES (admin CRUD)
+// =============================================================
+// Coexists with the auto-scheduler (src/services/scheduler.js) — no unique
+// constraint on (task_id, challenge_date), so admin can add/override freely.
+
+router.get('/daily-challenges', requireAdmin, (req, res) => {
+    try {
+        const { since, until, type, limit, offset } = req.query;
+        const rows = dailyChallengeService.listChallenges({
+            since: since || null,
+            until: until || null,
+            challengeType: type || null,
+            limit: limit ? parseInt(limit, 10) : 100,
+            offset: offset ? parseInt(offset, 10) : 0
+        });
+        res.json(rows);
+    } catch (error) {
+        console.error('List daily challenges error:', error);
+        res.status(500).json({ error: 'Failed to list daily challenges' });
+    }
+});
+
+router.post('/daily-challenges', requireAdmin, requireFields('taskId', 'challengeDate'), (req, res) => {
+    try {
+        const { taskId, challengeDate, challengeType, bonusPoints, isActive } = req.body;
+        const challenge = dailyChallengeService.createChallenge({
+            taskId: parseInt(taskId, 10),
+            challengeDate,
+            challengeType: challengeType || 'daily',
+            bonusPoints: bonusPoints != null ? Number(bonusPoints) : 0,
+            isActive: isActive == null ? 1 : (isActive ? 1 : 0)
+        });
+        logAdminAction(req, 'CREATE_DAILY_CHALLENGE', 'daily_challenge', challenge.id, {
+            task_id: challenge.task_id,
+            challenge_date: challenge.challenge_date,
+            challenge_type: challenge.challenge_type,
+            bonus_points: challenge.bonus_points
+        });
+        res.status(201).json(challenge);
+    } catch (error) {
+        console.error('Create daily challenge error:', error);
+        res.status(400).json({ error: error.message || 'Failed to create daily challenge' });
+    }
+});
+
+router.put('/daily-challenges/:id', requireAdmin, (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        const existing = dailyChallengeService.getChallengeById(id);
+        if (!existing) return res.status(404).json({ error: 'Daily challenge not found' });
+        const updated = dailyChallengeService.updateChallenge(id, req.body || {});
+        logAdminAction(req, 'UPDATE_DAILY_CHALLENGE', 'daily_challenge', id, {
+            changed: Object.keys(req.body || {})
+        });
+        res.json(updated);
+    } catch (error) {
+        console.error('Update daily challenge error:', error);
+        res.status(400).json({ error: error.message || 'Failed to update daily challenge' });
+    }
+});
+
+router.delete('/daily-challenges/:id', requireAdmin, requireAdminRole('superadmin'), (req, res) => {
+    try {
+        const id = parseInt(req.params.id, 10);
+        const snapshot = dailyChallengeService.deleteChallenge(id);
+        if (!snapshot) return res.status(404).json({ error: 'Daily challenge not found' });
+        logAdminAction(req, 'DELETE_DAILY_CHALLENGE', 'daily_challenge', id, {
+            deleted_row: snapshot
+        });
+        res.json({ ok: true, deleted: snapshot });
+    } catch (error) {
+        console.error('Delete daily challenge error:', error);
+        res.status(500).json({ error: 'Failed to delete daily challenge' });
     }
 });
 

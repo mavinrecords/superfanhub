@@ -135,9 +135,57 @@ function getNextMilestone(currentStreak) {
     return null;
 }
 
+/**
+ * Reset a single user's streak (admin op). Sets current_streak=0 and
+ * bonus_multiplier=1.0; longest_streak is preserved as the historical record.
+ * No-op if user has no streak row. Returns the post-reset streak info.
+ */
+function resetUserStreak(userId) {
+    const db = getDatabase();
+    const existing = db.prepare('SELECT * FROM streaks WHERE user_id = ?').get(userId);
+    if (!existing) {
+        return { reset: false, reason: 'no_streak', userId };
+    }
+    db.prepare(`
+        UPDATE streaks
+        SET current_streak = 0, bonus_multiplier = 1.0, updated_at = datetime('now')
+        WHERE user_id = ?
+    `).run(userId);
+    eventBus.emitStreakUpdated(userId, { streak: 0, multiplier: 1.0 });
+    return {
+        reset: true,
+        userId,
+        previousStreak: existing.current_streak,
+        previousMultiplier: existing.bonus_multiplier,
+        longestStreak: existing.longest_streak
+    };
+}
+
+/**
+ * List streaks across all users (admin). Joins users for display info.
+ * Default sort: longest current streak first.
+ */
+function listStreaks({ limit = 50, offset = 0, sortBy = 'current' } = {}) {
+    const db = getDatabase();
+    const orderClause = sortBy === 'longest'
+        ? 'ORDER BY s.longest_streak DESC, s.current_streak DESC'
+        : 'ORDER BY s.current_streak DESC, s.longest_streak DESC';
+    return db.prepare(`
+        SELECT s.user_id, s.current_streak, s.longest_streak, s.last_activity_date,
+               s.bonus_multiplier, s.updated_at,
+               u.name as user_name, u.email as user_email
+        FROM streaks s
+        JOIN users u ON u.id = s.user_id
+        ${orderClause}
+        LIMIT ? OFFSET ?
+    `).all(limit, offset);
+}
+
 module.exports = {
     recordDailyActivity,
     getStreakInfo,
     resetBrokenStreaks,
+    resetUserStreak,
+    listStreaks,
     STREAK_BONUSES
 };

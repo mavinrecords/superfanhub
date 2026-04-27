@@ -427,6 +427,14 @@
                     </svg>
                     <span class="nav-label">Squads</span>
                 </div>
+                <div class="nav-item" data-page="artists">
+                    <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="2">
+                        <circle cx="12" cy="12" r="3" />
+                        <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24" />
+                    </svg>
+                    <span class="nav-label">Artists</span>
+                </div>
                 <div class="nav-item" data-page="loyalty">
                     <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                         stroke-width="2">
@@ -1144,6 +1152,7 @@
                         <button class="tab active" data-tasks-tab="list">Tasks</button>
                         <button class="tab" data-tasks-tab="multipliers">Multipliers</button>
                         <button class="tab" data-tasks-tab="fraud">Fraud Flags</button>
+                        <button class="tab" data-tasks-tab="challenges">Daily Challenges</button>
                     </div>
 
                     <!-- Tasks list tab -->
@@ -1233,6 +1242,87 @@
                                     <tbody id="taskFraudTableBody"></tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Daily Challenges tab (Tier 3) -->
+                    <div id="tasksTabChallenges" class="tasks-tab-content hidden">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+                            <div class="filter-bar" style="margin:0;">
+                                <input type="date" id="challengeSinceFilter" class="form-input">
+                                <input type="date" id="challengeUntilFilter" class="form-input">
+                                <select id="challengeTypeFilter">
+                                    <option value="">All Types</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" id="applyChallengeFiltersBtn">Apply</button>
+                            </div>
+                            <button class="btn btn-primary btn-sm" id="newChallengeBtn">+ New Challenge</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Task</th>
+                                            <th>Bonus</th>
+                                            <th>Active</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="challengesTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Daily Challenge Modal -->
+                <div class="modal-overlay" id="challengeModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 id="challengeModalTitle">Create Daily Challenge</h3>
+                            <button class="modal-close" id="closeChallengeModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="challengeForm">
+                                <input type="hidden" id="challengeId">
+                                <div class="form-group">
+                                    <label class="form-label">Task ID *</label>
+                                    <input type="number" id="challengeTaskId" class="form-input" required min="1">
+                                    <small class="text-muted">Look up the ID in the Tasks list above.</small>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Challenge Date *</label>
+                                        <input type="date" id="challengeDate" class="form-input" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Type</label>
+                                        <select id="challengeTypeInput" class="form-input">
+                                            <option value="daily">Daily</option>
+                                            <option value="weekly">Weekly</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Bonus Points</label>
+                                        <input type="number" id="challengeBonus" class="form-input" value="50" min="0">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Active</label>
+                                        <select id="challengeActive" class="form-input">
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="challengeSubmitBtn">Create Challenge</button>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -1606,6 +1696,76 @@
                     </div>
                 </div>
 
+                <!-- Artists Page (Tier 3) -->
+                <div id="artistsPage" class="page hidden">
+                    <div class="page-header">
+                        <h1>Artists</h1>
+                        <button class="btn btn-primary" id="newArtistBtn">+ New Artist</button>
+                    </div>
+                    <p class="text-muted" style="margin-bottom:16px;">
+                        Roster of Mavin artists. Active artists are eligible for streaming credit, tasks, squads, and rewards. Deleting cascades across the platform.
+                    </p>
+                    <div class="card">
+                        <div class="table-container">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Display Name</th>
+                                        <th>Slug</th>
+                                        <th>Spotify ID</th>
+                                        <th>Sort</th>
+                                        <th>Active</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="artistsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Artist Modal (create/edit) -->
+                <div class="modal-overlay" id="artistModal">
+                    <div class="modal">
+                        <div class="modal-header">
+                            <h3 id="artistModalTitle">Create Artist</h3>
+                            <button class="modal-close" id="closeArtistModalBtn">&times;</button>
+                        </div>
+                        <div class="modal-content" style="padding:24px;">
+                            <form id="artistForm">
+                                <input type="hidden" id="artistOriginalSlug">
+                                <div class="form-group">
+                                    <label class="form-label">Display Name *</label>
+                                    <input type="text" id="artistDisplayName" class="form-input" required>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Slug (auto-derived if blank)</label>
+                                    <input type="text" id="artistSlug" class="form-input" placeholder="e.g. ayra-starr">
+                                    <small class="text-muted">Lowercase letters/numbers/hyphens only. Cannot be changed after creation.</small>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Spotify Artist ID</label>
+                                    <input type="text" id="artistSpotifyId" class="form-input" placeholder="e.g. 0kQTwzGpjAvuGyeoUFkfDi">
+                                </div>
+                                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                    <div class="form-group">
+                                        <label class="form-label">Sort Order</label>
+                                        <input type="number" id="artistSortOrder" class="form-input" value="100">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">Active</label>
+                                        <select id="artistActive" class="form-input">
+                                            <option value="1">Active</option>
+                                            <option value="0">Inactive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-full" id="artistSubmitBtn">Create Artist</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Reward Modal -->
                 <div class="modal-overlay" id="rewardModal">
                     <div class="modal">
@@ -1672,7 +1832,7 @@
                 <!-- Loyalty Page -->
                 <div id="loyaltyPage" class="page hidden">
                     <div class="page-header">
-                        <h1>Loyalty & Referrals</h1>
+                        <h1>Loyalty &amp; Referrals</h1>
                     </div>
                     <!-- Placeholder for Loyalty Stats -->
                     <div class="stats-grid">
@@ -1685,10 +1845,46 @@
                             <div class="stat-value" id="loyaltyTotalReferrals">-</div>
                         </div>
                     </div>
-                    <div class="card mt-xl">
-                        <h3>Loyalty Tiers Configuration</h3>
-                        <p class="text-muted">Bronze (0 pts), Silver (1000 pts), Gold (5000 pts), Platinum (10000 pts)
-                        </p>
+
+                    <div class="tabs" style="margin:24px 0 16px 0;">
+                        <button class="tab active" data-loyalty-tab="config">Tier Config</button>
+                        <button class="tab" data-loyalty-tab="referrals">Referrals</button>
+                    </div>
+
+                    <div id="loyaltyTabConfig" class="loyalty-tab-content">
+                        <div class="card">
+                            <h3>Loyalty Tiers Configuration</h3>
+                            <p class="text-muted">Bronze (0 pts), Silver (1000 pts), Gold (5000 pts), Platinum (10000 pts)</p>
+                        </div>
+                    </div>
+
+                    <div id="loyaltyTabReferrals" class="loyalty-tab-content hidden">
+                        <div class="filter-bar">
+                            <select id="referralStatusFilter">
+                                <option value="">All Status</option>
+                                <option value="pending">Pending</option>
+                                <option value="completed">Completed</option>
+                            </select>
+                            <button class="btn btn-secondary btn-sm" id="applyReferralFiltersBtn">Apply</button>
+                        </div>
+                        <div class="card">
+                            <div class="table-container">
+                                <table class="responsive-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Created</th>
+                                            <th>Referrer</th>
+                                            <th>Referee</th>
+                                            <th>Code</th>
+                                            <th>Status</th>
+                                            <th>Reward</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="referralsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1774,6 +1970,36 @@
                         </div>
                         <div id="leaderboardList">
                             <p style="color:var(--text-muted);">Loading leaderboard...</p>
+                        </div>
+                    </div>
+
+                    <!-- Streaks (Tier 3) -->
+                    <div class="card mt-xl">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-lg);flex-wrap:wrap;gap:12px;">
+                            <h3 style="margin:0;">Active Streaks</h3>
+                            <div class="filter-bar" style="margin:0;">
+                                <select id="streakSortBy">
+                                    <option value="current">Current Streak</option>
+                                    <option value="longest">Longest Streak</option>
+                                </select>
+                                <button class="btn btn-secondary btn-sm" id="applyStreakFiltersBtn">Apply</button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>Current</th>
+                                        <th>Longest</th>
+                                        <th>Multiplier</th>
+                                        <th>Last Activity</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="streaksTableBody"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

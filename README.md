@@ -191,9 +191,8 @@ Pinned to **Node 22 LTS** via `.nvmrc` and `engines.node`. `better-sqlite3@9.6.0
 5. Set env vars from `.env.example`. To skip the `admin` / `admin123` default and the forced rotation, set:
    - `ADMIN_USERNAME` — your chosen username
    - `ADMIN_PASSWORD` — your chosen password (min 8 chars). Mark this var **secret** in Render
-6. After first deploy, open the Render **Shell** tab and run `npm run init-db` once. It reads the env vars above and seeds the admin user. The schema itself is created automatically on boot, but `init-db` is what creates the admin row.
 
-After the admin row exists, the env vars are ignored on subsequent runs. To rotate the password, log into `/admin` and use the password-change UI — don't try to re-seed by changing the env var.
+That's it — no shell access required. The server seeds the admin user automatically on boot from those env vars. If `ADMIN_PASSWORD` is unset, it falls back to `admin` / `admin123` with forced rotation on first login. Either way, the seed is idempotent: once the admin row exists, the env vars are ignored on subsequent boots. To rotate the password later, log into `/admin` and use the password-change UI.
 
 ---
 

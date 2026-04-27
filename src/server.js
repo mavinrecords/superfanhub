@@ -4,6 +4,7 @@ const session = require('express-session');
 const helmet = require('helmet');
 const path = require('path');
 const { initializeDatabase } = require('./db/database');
+const { seedAdminIfNeeded } = require('./db/seedAdmin');
 const { apiLimiter, addRequestMetadata, addRequestId } = require('./middleware/security');
 const { blockUntilPasswordChanged } = require('./middleware/auth');
 const cardsRoutes = require('./routes/cards');
@@ -27,6 +28,10 @@ const PORT = process.env.PORT || 3000;
 
 // Initialize database
 initializeDatabase();
+
+// Seed admin user from ADMIN_USERNAME / ADMIN_PASSWORD env vars (or admin/admin123 fallback).
+// Idempotent — no-op if the admin row already exists.
+seedAdminIfNeeded();
 
 // Initialize event bus
 eventBus.initialize();

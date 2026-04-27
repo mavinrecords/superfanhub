@@ -129,6 +129,8 @@ Required `.env` keys:
 | `MAVIN_ARTIST_IDS` | no | — | Comma-separated Spotify artist IDs to pre-populate the roster |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` / `SMTP_FROM` / `SMTP_SECURE` | no | — | Transactional email |
 | `RUN_EXPIRY_CHECK_ON_START` | no | `false` | Run reward-expiry sweep immediately at boot (scheduler cron also runs daily) |
+| `ADMIN_USERNAME` | no | `admin` | Username used by `npm run init-db` on a fresh DB |
+| `ADMIN_PASSWORD` | no | `admin123` (forces rotation) | Password used by `npm run init-db` on a fresh DB. If you set this explicitly, no forced rotation. Min 8 chars |
 
 Fan authentication uses opaque session tokens (no JWT), so there is no `JWT_SECRET`. Sessions are stored server-side and validated via `authService.validateSession`.
 
@@ -186,8 +188,12 @@ Pinned to **Node 22 LTS** via `.nvmrc` and `engines.node`. `better-sqlite3@9.6.0
 2. Build command: `npm install`
 3. Start command: `npm start`
 4. Add a **Persistent Disk** mounted at `/opt/render/project/src/src/db` (1 GB is plenty)
-5. Set env vars from `.env.example`
-6. After first deploy, open the Render **Shell** tab and run `npm run init-db` once — this seeds the default admin user (`admin` / `admin123`, force-rotated on first login). The schema itself is created automatically on boot.
+5. Set env vars from `.env.example`. To skip the `admin` / `admin123` default and the forced rotation, set:
+   - `ADMIN_USERNAME` — your chosen username
+   - `ADMIN_PASSWORD` — your chosen password (min 8 chars). Mark this var **secret** in Render
+6. After first deploy, open the Render **Shell** tab and run `npm run init-db` once. It reads the env vars above and seeds the admin user. The schema itself is created automatically on boot, but `init-db` is what creates the admin row.
+
+After the admin row exists, the env vars are ignored on subsequent runs. To rotate the password, log into `/admin` and use the password-change UI — don't try to re-seed by changing the env var.
 
 ---
 

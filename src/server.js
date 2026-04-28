@@ -48,6 +48,15 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             scriptSrc: ["'self'", "'unsafe-inline'", "https://ajax.googleapis.com"],
+            // Helmet's default CSP also sets `script-src-attr 'none'`, which
+            // blocks inline event handlers (onclick=, onsubmit=, etc.) even
+            // when scriptSrc allows 'unsafe-inline'. The admin dashboard
+            // renders edit/delete buttons via template-literal innerHTML
+            // with onclick='editTask(...)' style handlers, so we explicitly
+            // re-allow inline attribute handlers here. Long-term we should
+            // migrate to addEventListener / event delegation, but that's a
+            // larger refactor across admin.js — for now, opt back in.
+            scriptSrcAttr: ["'unsafe-inline'"],
             // accounts.spotify.com — Spotify OAuth popup (direct, no Pathfix).
             // Last.fm uses simple GET/POST from our server, no browser-side frame.
             frameSrc: ["'self'", "https://accounts.spotify.com"],

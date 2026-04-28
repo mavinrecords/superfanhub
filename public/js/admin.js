@@ -380,7 +380,9 @@ document.getElementById('createEngagementForm')?.addEventListener('submit', asyn
         type: document.getElementById('engType').value,
         description: document.getElementById('engDesc').value,
         points: parseInt(document.getElementById('engPoints').value),
-        endsAt: document.getElementById('engEndDate').value || null,
+        // campaignService.createCampaign destructures `endDate`, not `endsAt`.
+        // The previous key name silently dropped the date on every create.
+        endDate: document.getElementById('engEndDate').value || null,
         imageUrl: document.getElementById('engImage').value || null
     };
 
@@ -1694,7 +1696,11 @@ async function submitTaskForm(e) {
         targetHashtag: document.getElementById('taskTargetHashtag').value.trim() || null,
         maxCompletions: parseInt(document.getElementById('taskMaxCompletions').value) || 1,
         startDate: document.getElementById('taskStartDate').value || null,
-        endDate: document.getElementById('taskEndDate').value || null
+        endDate: document.getElementById('taskEndDate').value || null,
+        // status is sent on both POST and PUT — the create service supports it
+        // and we want the admin's "Active" / "Draft" choice honored on create
+        // (the DB default would otherwise force everything to 'draft').
+        status: document.getElementById('taskStatus').value
     };
     if (isEdit) {
         // PUT uses snake_case (allowed list); translate
@@ -1704,7 +1710,8 @@ async function submitTaskForm(e) {
         payload.max_completions = payload.maxCompletions; delete payload.maxCompletions;
         payload.start_date = payload.startDate; delete payload.startDate;
         payload.end_date = payload.endDate; delete payload.endDate;
-        payload.status = document.getElementById('taskStatus').value;
+        // status is already in payload from above — no rename needed since
+        // the column name is identical in snake_case.
     }
     try {
         const res = await fetch(`/api/admin/tasks${isEdit ? `/${id}` : ''}`, {

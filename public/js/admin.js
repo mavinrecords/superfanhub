@@ -4,6 +4,79 @@ let currentAdmin = null;
 let issuedCards = [];
 
 // =====================================================================
+// CSP-INDEPENDENT EVENT DELEGATION
+// =====================================================================
+// Helmet's default CSP includes `script-src-attr 'none'`, which silently
+// blocks every inline `onclick=` handler in the admin dashboard. Rather
+// than depend on the CSP override deploying everywhere, we route all
+// button clicks through a single document-level delegator that reads
+// `data-action` and forwards to the named global function.
+//
+// Markup contract:
+//   <button data-action="fnName" data-id="123">Edit</button>
+//   <button data-action="fnName" data-arg="abc" data-arg2="xyz">Do</button>
+//   <button data-action="fnName" data-payload="<base64-json>">Edit</button>
+//   <button data-action="fnName" data-id="1" data-stop>Freeze</button>
+//
+// `data-payload` is base64(unicode-safe(JSON)) — safe to drop into an
+// HTML attribute even when the source object contains apostrophes,
+// quotes, newlines, or non-ASCII characters.
+// =====================================================================
+function encodeActionPayload(obj) {
+    return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+}
+function decodeActionPayload(str) {
+    return JSON.parse(decodeURIComponent(escape(atob(str))));
+}
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const fnName = btn.dataset.action;
+    const fn = window[fnName];
+    if (typeof fn !== 'function') {
+        console.warn('Unknown data-action:', fnName);
+        return;
+    }
+    if (btn.hasAttribute('data-stop')) e.stopPropagation();
+    let args = [];
+    if (btn.dataset.payload) {
+        try {
+            args = [decodeActionPayload(btn.dataset.payload)];
+        } catch (err) {
+            console.error('Bad data-payload for', fnName, err);
+            return;
+        }
+    } else {
+        for (const k of ['id', 'arg', 'arg2', 'arg3']) {
+            if (btn.dataset[k] === undefined) continue;
+            const v = btn.dataset[k];
+            // Coerce to number when the value is a clean integer string.
+            const n = Number(v);
+            args.push(
+                v.trim() !== '' && !Number.isNaN(n) && String(n) === v.trim()
+                    ? n
+                    : v
+            );
+        }
+    }
+    try {
+        fn(...args);
+    } catch (err) {
+        console.error('Action handler threw for', fnName, err);
+    }
+});
+
+// Wrappers for action chains (`fn(); closeModal()`) — keeps the markup
+// declarative (one `data-action=`) and avoids a brittle inline syntax.
+function freezeCardAndClose(id) { freezeCard(id); closeModal(); }
+function revokeCardAndClose(id) { revokeCard(id); closeModal(); }
+function unfreezeCardAndClose(id) { unfreezeCard(id); closeModal(); }
+// Wrappers for boolean second-arg cases — primitives in dataset are
+// always strings, so we promote 'true'/'false' to bool here.
+function userSuspend(id) { userToggleSuspend(id, true); }
+function userUnsuspend(id) { userToggleSuspend(id, false); }
+
+// =====================================================================
 // M3-1 — Skeleton row helper. Paints N placeholder rows with shimmering
 // `.skeleton` blocks while a fetch is pending; the existing render
 // functions overwrite the tbody.innerHTML on success or empty.
@@ -355,11 +428,11 @@ async function loadEngagementCampaigns() {
                 <td data-label="Start Date">${formatDate(c.start_date || c.starts_at) || '-'}</td>
                 <td data-label="End Date">${formatDate(c.end_date || c.ends_at) || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick='editEngagementCampaign(${JSON.stringify(c)})'>Edit</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editEngagementCampaign" data-payload="${encodeActionPayload(c)}">Edit</button>
                     ${c.status === 'active'
-                ? `<button class="btn btn-sm btn-secondary" onclick="toggleCampaignStatus('${c.id}', 'ended')">End</button>`
-                : `<button class="btn btn-sm btn-success" onclick="toggleCampaignStatus('${c.id}', 'active')">Activate</button>`}
-                    <button class="btn btn-sm btn-danger" onclick="deleteEngagementCampaign(${c.id})">Delete</button>
+                ? `<button class="btn btn-sm btn-secondary" data-action="toggleCampaignStatus" data-id="${c.id}" data-arg="ended">End</button>`
+                : `<button class="btn btn-sm btn-success" data-action="toggleCampaignStatus" data-id="${c.id}" data-arg="active">Activate</button>`}
+                    <button class="btn btn-sm btn-danger" data-action="deleteEngagementCampaign" data-id="${c.id}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -566,7 +639,7 @@ async function loadCards() {
                             </svg>
                             <div class="empty-state__title">No gift cards yet</div>
                             <div class="empty-state__description">Issue your first card to start tracking redemptions.</div>
-                            <button class="btn btn-primary" onclick="showPage('issue')">Issue First Card</button>
+                            <button class="btn btn-primary" data-action="showPage" data-arg="issue">Issue First Card</button>
                         </div>
                     </td>
                 </tr>
@@ -586,12 +659,12 @@ async function loadCards() {
         <td data-label="Issued">${formatDate(card.issued_at)}</td>
         <td data-label="Actions">
           ${card.status === 'active' ? `
-            <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation();freezeCard(${card.id})">Freeze</button>
-            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();revokeCard(${card.id})">Revoke</button>
+            <button class="btn btn-sm btn-secondary" data-action="freezeCard" data-id="${card.id}" data-stop>Freeze</button>
+            <button class="btn btn-sm btn-danger" data-action="revokeCard" data-id="${card.id}" data-stop>Revoke</button>
           ` : ''}
           ${card.status === 'frozen' ? `
-            <button class="btn btn-sm btn-success" onclick="event.stopPropagation();unfreezeCard(${card.id})">Unfreeze</button>
-            <button class="btn btn-sm btn-danger" onclick="event.stopPropagation();revokeCard(${card.id})">Revoke</button>
+            <button class="btn btn-sm btn-success" data-action="unfreezeCard" data-id="${card.id}" data-stop>Unfreeze</button>
+            <button class="btn btn-sm btn-danger" data-action="revokeCard" data-id="${card.id}" data-stop>Revoke</button>
           ` : ''}
         </td>
       </tr>
@@ -903,7 +976,7 @@ document.getElementById('issueCardForm').addEventListener('submit', async (e) =>
             list.innerHTML = data.cards.map((card, i) => `
         <div class="bulk-card-item">
           <span>${i + 1}. ${card.code}</span>
-          <button class="btn btn-sm btn-secondary" onclick="copyToClipboard('${card.code}')">Copy</button>
+          <button class="btn btn-sm btn-secondary" data-action="copyToClipboard" data-arg="${card.code}">Copy</button>
         </div>
       `).join('');
 
@@ -1095,7 +1168,7 @@ async function showCardDetails(id, code) {
                         <div style="color: #999; font-size: 0.75rem;">Loading...</div>
                     </div>
                     <div style="margin-top: 12px;">
-                        <button class="btn btn-secondary btn-sm" onclick="downloadQRCode(${card.id}, '${card.code_prefix}')">
+                        <button class="btn btn-secondary btn-sm" data-action="downloadQRCode" data-id="${card.id}" data-arg="${card.code_prefix}">
                             📥 Download QR Code
                         </button>
                     </div>
@@ -1104,12 +1177,12 @@ async function showCardDetails(id, code) {
             
             <div class="mt-xl flex gap-md">
                 ${card.status === 'active' ? `
-                    <button class="btn btn-secondary w-full" onclick="freezeCard(${card.id}); closeModal()">Freeze Card</button>
-                    <button class="btn btn-danger w-full" onclick="revokeCard(${card.id}); closeModal()">Revoke Card</button>
+                    <button class="btn btn-secondary w-full" data-action="freezeCardAndClose" data-id="${card.id}">Freeze Card</button>
+                    <button class="btn btn-danger w-full" data-action="revokeCardAndClose" data-id="${card.id}">Revoke Card</button>
                 ` : ''}
                 ${card.status === 'frozen' ? `
-                    <button class="btn btn-success w-full" onclick="unfreezeCard(${card.id}); closeModal()">Unfreeze Card</button>
-                    <button class="btn btn-danger w-full" onclick="revokeCard(${card.id}); closeModal()">Revoke Card</button>
+                    <button class="btn btn-success w-full" data-action="unfreezeCardAndClose" data-id="${card.id}">Unfreeze Card</button>
+                    <button class="btn btn-danger w-full" data-action="revokeCardAndClose" data-id="${card.id}">Revoke Card</button>
                 ` : ''}
             </div>
         `;
@@ -1356,7 +1429,7 @@ async function loadSuperFanUsers() {
                 <td data-label="Status">${user.card_status ? `<span class="status-badge status-${user.card_status}">${user.card_status}</span>` : '<span style="color:var(--text-muted);">—</span>'}</td>
                 <td data-label="Joined">${new Date(user.created_at).toLocaleDateString()}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick="viewSuperFanDetail(${user.id})">View</button>
+                    <button class="btn btn-sm btn-secondary" data-action="viewSuperFanDetail" data-id="${user.id}">View</button>
                 </td>
             </tr>
         `).join('');
@@ -1457,11 +1530,11 @@ async function viewSuperFanDetail(userId) {
                 </div>
                 <hr style="border-color:rgba(255,255,255,0.1);">
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-primary" onclick="addPointsToUser(${userId})">Add Points</button>
-                    <button class="btn btn-secondary" onclick="toggleUserCardStatus(${userId})">
+                    <button class="btn btn-primary" data-action="addPointsToUser" data-id="${userId}">Add Points</button>
+                    <button class="btn btn-secondary" data-action="toggleUserCardStatus" data-id="${userId}">
                         ${user.card_status === 'active' ? 'Suspend Card' : 'Activate Card'}
                     </button>
-                    <button class="btn btn-secondary" onclick="openUserAdminActions(${userId}, '${escapeHtml(user.email).replace(/'/g, "\\'")}', '${escapeHtml(user.name || '').replace(/'/g, "\\'")}')">Manage Account</button>
+                    <button class="btn btn-secondary" data-action="openUserAdminActions" data-id="${userId}" data-arg="${escapeHtml(user.email)}" data-arg2="${escapeHtml(user.name || '')}">Manage Account</button>
                 </div>
             </div>
         `;
@@ -1635,8 +1708,8 @@ async function loadTasks() {
                 <td data-label="Proof">${escapeHtml(t.required_proof || 'none')}</td>
                 <td data-label="Created">${formatDate(t.created_at) || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick='editTask(${JSON.stringify(t)})'>Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteTask(${t.id})">Delete</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editTask" data-payload="${encodeActionPayload(t)}">Edit</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteTask" data-id="${t.id}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -1789,7 +1862,7 @@ async function loadMultipliers() {
                 <td data-label="End">${formatDate(m.end_date) || '-'}</td>
                 <td data-label="Created By">${escapeHtml(m.created_by || '-')}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-danger" onclick="deleteMultiplier(${m.id})">Delete</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteMultiplier" data-id="${m.id}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -1888,7 +1961,7 @@ async function loadTaskFraud() {
                 <td data-label="Severity"><span class="badge badge-${f.severity === 'high' ? 'revoked' : 'frozen'}">${escapeHtml(f.severity || 'low')}</span></td>
                 <td data-label="Details" class="text-muted" style="max-width:240px;">${escapeHtml((f.details || '').slice(0, 120))}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-success" onclick="resolveTaskFraud(${f.id}, 'reviewed')">Resolve</button>
+                    <button class="btn btn-sm btn-success" data-action="resolveTaskFraud" data-id="${f.id}" data-arg="reviewed">Resolve</button>
                 </td>
             </tr>
         `).join('');
@@ -1963,8 +2036,8 @@ async function loadVerifications() {
                     <td data-label="Proof">${proofPreview}</td>
                     <td data-label="Auto-Result">${autoResult}</td>
                     <td data-label="Actions">
-                        <button class="btn btn-sm btn-success" onclick="reviewVerification(${v.id}, 'approved')">Approve</button>
-                        <button class="btn btn-sm btn-danger" onclick="reviewVerification(${v.id}, 'rejected')">Reject</button>
+                        <button class="btn btn-sm btn-success" data-action="reviewVerification" data-id="${v.id}" data-arg="approved">Approve</button>
+                        <button class="btn btn-sm btn-danger" data-action="reviewVerification" data-id="${v.id}" data-arg="rejected">Reject</button>
                     </td>
                 </tr>`;
         }).join('');
@@ -2046,7 +2119,7 @@ async function loadRewards() {
                 <td data-label="Inventory">${r.inventory === -1 ? '∞' : (r.inventory ?? 0)}</td>
                 <td data-label="Active">${r.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">paused</span>'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick='editReward(${JSON.stringify(r)})'>Edit</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editReward" data-payload="${encodeActionPayload(r)}">Edit</button>
                 </td>
             </tr>
         `).join('');
@@ -2269,9 +2342,9 @@ async function loadSquads() {
                 <td data-label="Status">${s.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">disabled</span>'}</td>
                 <td data-label="Created">${formatDate(s.created_at) || '-'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick="viewSquadDetail(${s.id})">View</button>
-                    <button class="btn btn-sm btn-secondary" onclick='editSquad(${JSON.stringify(s)})'>Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteSquad(${s.id}, '${escapeHtml(s.name).replace(/'/g, "\\'")}')">Delete</button>
+                    <button class="btn btn-sm btn-secondary" data-action="viewSquadDetail" data-id="${s.id}">View</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editSquad" data-payload="${encodeActionPayload(s)}">Edit</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteSquad" data-id="${s.id}" data-arg="${escapeHtml(s.name)}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -2406,7 +2479,7 @@ async function viewSquadDetail(id) {
                 <td>${escapeHtml(m.role || 'member')}</td>
                 <td>${(m.contribution || 0).toLocaleString()} pts</td>
                 <td>
-                    <button class="btn btn-sm btn-danger" onclick="kickSquadMember(${squad.id}, ${m.user_id}, '${escapeHtml(m.name || '').replace(/'/g, "\\'")}')">Kick</button>
+                    <button class="btn btn-sm btn-danger" data-action="kickSquadMember" data-id="${squad.id}" data-arg="${m.user_id}" data-arg2="${escapeHtml(m.name || '')}">Kick</button>
                 </td>
             </tr>`).join('');
         content.innerHTML = `
@@ -2580,7 +2653,7 @@ async function loadRedemptions() {
                     <td data-label="Status">${statusBadge}</td>
                     <td data-label="Actions">
                         ${r.status !== 'fulfilled' && r.status !== 'cancelled'
-                            ? `<button class="btn btn-sm btn-success" onclick='openFulfillModal(${JSON.stringify(r)})'>Fulfill</button>`
+                            ? `<button class="btn btn-sm btn-success" data-action="openFulfillModal" data-payload="${encodeActionPayload(r)}">Fulfill</button>`
                             : '<span class="text-muted">—</span>'}
                     </td>
                 </tr>`;
@@ -2690,8 +2763,8 @@ loadRewards = async function patchedLoadRewards() {
                 <td data-label="Inventory">${r.inventory === -1 ? '∞' : (r.inventory ?? 0)}</td>
                 <td data-label="Active">${r.is_active ? '<span class="badge badge-active">active</span>' : '<span class="badge badge-frozen">paused</span>'}</td>
                 <td data-label="Actions">
-                    <button class="btn btn-sm btn-secondary" onclick='editReward(${JSON.stringify(r)})'>Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteReward(${r.id}, '${escapeHtml(r.title || '').replace(/'/g, "\\'")}')">Delete</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editReward" data-payload="${encodeActionPayload(r)}">Edit</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteReward" data-id="${r.id}" data-arg="${escapeHtml(r.title || '')}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -2751,8 +2824,8 @@ async function loadArtists() {
                 <td>${a.sort_order ?? 100}</td>
                 <td>${a.active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick='editArtist(${JSON.stringify(a)})'>Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteArtist('${escapeHtml(a.slug || '').replace(/'/g, "\\'")}', '${escapeHtml(a.display_name || '').replace(/'/g, "\\'")}')">Delete</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editArtist" data-payload="${encodeActionPayload(a)}">Edit</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteArtist" data-arg="${escapeHtml(a.slug || '')}" data-arg2="${escapeHtml(a.display_name || '')}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -2911,7 +2984,7 @@ async function loadReferrals() {
                     : '<span class="badge badge-secondary">Unclaimed</span>'}</td>
                 <td>
                     ${r.status !== 'completed' || r.reward_status !== 'granted'
-                        ? `<button class="btn btn-sm btn-primary" onclick="approveReferral(${r.id})">Approve</button>`
+                        ? `<button class="btn btn-sm btn-primary" data-action="approveReferral" data-id="${r.id}">Approve</button>`
                         : '<span class="text-muted" style="font-size:0.8em;">Done</span>'}
                 </td>
             </tr>
@@ -2974,7 +3047,7 @@ async function loadStreaks() {
                     <td class="text-muted" style="font-size:0.85em;">${s.last_activity_date || '—'}</td>
                     <td>
                         ${s.current_streak > 0
-                            ? `<button class="btn btn-sm btn-danger" onclick="adminResetStreak(${s.user_id}, '${escapeHtml(s.user_name || '').replace(/'/g, "\\'")}')">Reset</button>`
+                            ? `<button class="btn btn-sm btn-danger" data-action="adminResetStreak" data-id="${s.user_id}" data-arg="${escapeHtml(s.user_name || '')}">Reset</button>`
                             : '<span class="text-muted" style="font-size:0.8em;">—</span>'}
                     </td>
                 </tr>`;
@@ -3043,8 +3116,8 @@ async function loadDailyChallenges() {
                 <td>+${c.bonus_points || 0} pts</td>
                 <td>${c.is_active ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
                 <td>
-                    <button class="btn btn-sm btn-secondary" onclick='editDailyChallenge(${JSON.stringify(c)})'>Edit</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteDailyChallenge(${c.id})">Delete</button>
+                    <button class="btn btn-sm btn-secondary" data-action="editDailyChallenge" data-payload="${encodeActionPayload(c)}">Edit</button>
+                    <button class="btn btn-sm btn-danger" data-action="deleteDailyChallenge" data-id="${c.id}">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -3271,22 +3344,22 @@ function openUserAdminActions(userId, email, name) {
             <div style="border-top:1px solid #222;padding-top:16px;">
                 <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Reset Password</h4>
                 <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Generates a one-time temp password. The user is forced to change it on next login. All active sessions are revoked.</p>
-                <button type="button" class="btn btn-secondary" onclick="userResetPassword(${userId})">Reset password</button>
+                <button type="button" class="btn btn-secondary" data-action="userResetPassword" data-id="${userId}">Reset password</button>
             </div>
 
             <div style="border-top:1px solid #222;padding-top:16px;">
                 <h4 style="margin:0 0 8px 0;font-size:0.9rem;">Suspension</h4>
                 <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Suspended users can't log in. Reversible.</p>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                    <button type="button" class="btn btn-warning" onclick="userToggleSuspend(${userId}, true)">Suspend</button>
-                    <button type="button" class="btn btn-secondary" onclick="userToggleSuspend(${userId}, false)">Unsuspend</button>
+                    <button type="button" class="btn btn-warning" data-action="userSuspend" data-id="${userId}">Suspend</button>
+                    <button type="button" class="btn btn-secondary" data-action="userUnsuspend" data-id="${userId}">Unsuspend</button>
                 </div>
             </div>
 
             <div style="border-top:1px solid #222;padding-top:16px;">
                 <h4 style="margin:0 0 8px 0;font-size:0.9rem;color:#ef4444;">Danger zone</h4>
                 <p class="text-muted" style="font-size:0.85rem;margin:0 0 8px 0;">Hard-delete cascades through every user-keyed table (sessions, profiles, tasks, redemptions, etc.). Audit log retains a snapshot of the deleted row. This cannot be undone.</p>
-                <button type="button" class="btn btn-danger" onclick="userHardDelete(${userId}, '${email.replace(/'/g, "\\'")}')">Delete User</button>
+                <button type="button" class="btn btn-danger" data-action="userHardDelete" data-id="${userId}" data-arg="${escapeHtml(email)}">Delete User</button>
             </div>
         </div>
     `;
@@ -3331,7 +3404,7 @@ async function userResetPassword(userId) {
                         <div style="font-family:monospace;font-size:1.1rem;background:#000;padding:12px;border-radius:6px;user-select:all;word-break:break-all;">${escapeHtml(data.tempPassword)}</div>
                         <p class="text-muted" style="font-size:0.8rem;margin:12px 0 0 0;">Sessions revoked: ${data.sessionsRevoked || 0}. The user must change this password on next login.</p>
                     </div>
-                    <button type="button" class="btn btn-primary" onclick="closeUserActionModal()">Done</button>
+                    <button type="button" class="btn btn-primary" data-action="closeUserActionModal">Done</button>
                 </div>
             `;
         }
